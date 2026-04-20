@@ -1,0 +1,1 @@
+cmd_/home/ubuntu/axi_multiplier/axi_multiplier.ko := ld -r  -EL  -maarch64elf -z noexecstack   --build-id  -T ./scripts/module-common.lds -T ./arch/arm64/kernel/module.lds -o /home/ubuntu/axi_multiplier/axi_multiplier.ko /home/ubuntu/axi_multiplier/axi_multiplier.o /home/ubuntu/axi_multiplier/axi_multiplier.mod.o;  true

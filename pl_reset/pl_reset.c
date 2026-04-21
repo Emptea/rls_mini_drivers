@@ -2,12 +2,12 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
-#include <linux/reset.h>
+#include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 #include <linux/sysfs.h>
 
 struct pl_reset_dev {
-    struct reset_control *rstc;
+    struct gpio_desc *reset_gpiod;
 };
 
 static ssize_t reset_store(struct device *dev,
@@ -16,22 +16,15 @@ static ssize_t reset_store(struct device *dev,
                            size_t count)
 {
     struct pl_reset_dev *priv = dev_get_drvdata(dev);
-    int ret;
 
-    if (!priv || !priv->rstc)
+    if (!priv || !priv->reset_gpiod)
         return -EINVAL;
 
-    ret = reset_control_assert(priv->rstc);
-    if (ret)
-        return ret;
-
+    gpiod_set_value_cansleep(priv->reset_gpiod, 0); /* assert resetn */
     msleep(10);
+    gpiod_set_value_cansleep(priv->reset_gpiod, 1); /* deassert resetn */
 
-    ret = reset_control_deassert(priv->rstc);
-    if (ret)
-        return ret;
-
-    dev_info(dev, "PL reset pulsed by sysfs\n");
+    dev_info(dev, "PL reset pulsed on GPIO 173\n");
     return count;
 }
 
@@ -46,17 +39,17 @@ static int pl_reset_probe(struct platform_device *pdev)
     if (!priv)
         return -ENOMEM;
 
-    priv->rstc = devm_reset_control_get_exclusive(&pdev->dev, "pl_resetn0");
-    if (IS_ERR(priv->rstc))
-        return PTR_ERR(priv->rstc);
-
     platform_set_drvdata(pdev, priv);
+
+    priv->reset_gpiod = devm_gpiod_get(&pdev->dev, "reset", GPIOD_OUT_LOW);
+    if (IS_ERR(priv->reset_gpiod))
+        return PTR_ERR(priv->reset_gpiod);
 
     ret = device_create_file(&pdev->dev, &dev_attr_reset);
     if (ret)
         return ret;
 
-    dev_info(&pdev->dev, "PL reset helper loaded\n");
+    dev_info(&pdev->dev, "PL GPIO reset helper loaded\n");
     return 0;
 }
 
@@ -84,4 +77,4 @@ static struct platform_driver pl_reset_driver = {
 module_platform_driver(pl_reset_driver);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("PL reset helper using Linux reset controller");
+MODULE_DESCRIPTION("PL reset helper using GPIO");

@@ -738,8 +738,10 @@ deps_/home/ubuntu/drivers/pl_reset/pl_reset.o := \
     $(wildcard include/config/of/overlay.h) \
   include/linux/property.h \
   include/linux/fwnode.h \
-  include/linux/reset.h \
-    $(wildcard include/config/reset/controller.h) \
+  include/linux/gpio/consumer.h \
+    $(wildcard include/config/gpiolib.h) \
+    $(wildcard include/config/of/gpio.h) \
+    $(wildcard include/config/gpio/sysfs.h) \
   include/linux/delay.h \
   arch/arm64/include/generated/asm/delay.h \
   include/asm-generic/delay.h \

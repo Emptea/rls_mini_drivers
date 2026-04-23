@@ -1,10 +1,7 @@
 #if !defined(PL_RESET_H)
 #define PL_RESET_H
 
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
+#include <stdint.h>
 
 enum pl_reset_err {
     PL_RESET_ERR_NONE,

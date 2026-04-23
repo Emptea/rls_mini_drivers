@@ -1,3 +1,7 @@
+#include <fcntl.h>
+#include <errno.h>
+#include <stdio.h>
+#include <unistd.h>
 #include "pl_reset.h"
 
 uint32_t reset_pl()
@@ -21,6 +25,6 @@ uint32_t reset_pl()
     }
 
     close(fd);
-    printf("pl_reset triggered");
+    printf("pl_reset triggered\n");
     return PL_RESET_ERR_NONE;
 }

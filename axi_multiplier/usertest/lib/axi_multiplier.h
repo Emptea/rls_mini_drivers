@@ -1,10 +1,6 @@
 #if !defined(AXI_MULTIPLIER_H)
 #define AXI_MULTIPLIER_H
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <string.h>
 
 enum fd_err {
    FD_ERR_NONE,

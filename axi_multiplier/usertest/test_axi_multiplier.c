@@ -1,56 +1,39 @@
 #include "axi_multiplier.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-int main()
+int main(int argc, char *argv[])
 {
-    int fd = open("/dev/axi_multiplier", O_RDWR);
-    if (fd < 0)
-    {
-        perror("open");
+    if (argc != 2) {
+        printf("usage: %s <value>\n", argv[0]);
         return 1;
     }
 
-    if (axi_multiplier_init())
-    {
-        return 1;
-    }
-
-    int16_t wr = 0x1234;
-    if (axi_multiplier_write(wr))
-    {
-        return 1;
-    }
-
+    int16_t wr = (int16_t)strtol(argv[1], NULL, 0);
     int16_t rd;
-    if (axi_multiplier_read(&rd))
-    {
+
+    if (axi_multiplier_init()) {
         return 1;
     }
 
-    if (wr != rd)
-    {
-        fprintf("wr != rd");
+    if (axi_multiplier_write(wr)) {
+        axi_multiplier_deinit();
         return 1;
     }
+    printf("axi_multiplier: wrote 0x%04hx\n", (uint16_t)wr);
 
-    // uint32_t val = 0x00001234;
-    // if (write(fd, &val, sizeof(val)) != sizeof(val)) {
-    //     perror("write");
-    //     close(fd);
-    //     return 1;
-    // }
+    if (axi_multiplier_read(&rd)) {
+        axi_multiplier_deinit();
+        return 1;
+    }
+    printf("axi_multiplier: read 0x%04hx\n", (uint16_t)rd);
 
-    // lseek(fd, 0, SEEK_SET);
-
-    // uint32_t rd = 0;
-    // if (read(fd, &rd, sizeof(rd)) != sizeof(rd)) {
-    //     perror("read");
-    //     close(fd);
-    //     return 1;
-    // }
-
-    // printf("read back: 0x%08x\n", rd);
-
-    // close(fd);
+    if (wr != rd) {
+        printf("wr != rd\n");
+        axi_multiplier_deinit();
+        return 1;
+    }
 
     axi_multiplier_deinit();
     return 0;

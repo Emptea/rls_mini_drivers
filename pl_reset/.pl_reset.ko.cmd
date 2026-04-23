@@ -1,1 +1,0 @@
-cmd_/home/ubuntu/drivers/pl_reset/pl_reset.ko := ld -r  -EL  -maarch64elf -z noexecstack   --build-id  -T ./scripts/module-common.lds -T ./arch/arm64/kernel/module.lds -o /home/ubuntu/drivers/pl_reset/pl_reset.ko /home/ubuntu/drivers/pl_reset/pl_reset.o /home/ubuntu/drivers/pl_reset/pl_reset.mod.o;  true

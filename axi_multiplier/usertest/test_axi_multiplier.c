@@ -8,14 +8,13 @@
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc < 3)
     {
-        printf("usage: %s <value>\n", argv[0]);
+        printf("usage: %s <mult0_val> <mult1_val>\n", argv[0]);
         return 1;
     }
-
-    int16_t wr = (int16_t)strtol(argv[1], NULL, 0);
-    int16_t rd;
+    int16_t mult0 = (int16_t)strtol(argv[1], NULL, 0);
+    int16_t mult1 = (int16_t)strtol(argv[2], NULL, 0);
 
     if (axi_multiplier_init())
     {
@@ -29,38 +28,36 @@ int main(int argc, char *argv[])
     uint32_t tp_get;
     axi_multiplier_set_tp(tp);
     tp_get = axi_multiplier_get_tp();
-    printf("Set test point %d, returned %d", tp, tp_get);
+    printf("Set test point %d, returned %d\n", tp, tp_get);
     if (tp != tp_get)
     {
-        printf(RED "Test point check failed" RESET);
+        printf(RED "Test point check failed" RESET "\n");
     }
 
     uint32_t ch = 1;
     uint32_t ch_get;
     axi_multiplier_set_tp(ch);
     ch_get = axi_multiplier_get_ch();
-    printf("Set channel %d, returned %d", ch, ch_get);
+    printf("Set channel %d, returned %d\n", ch, ch_get);
     if (ch != ch_get)
     {
-        printf(RED "Channel check failed" RESET);
+        printf(RED "Channel check failed" RESET "\n");
     }
 
-    int16_t mult0 = 2;
-    int16_t mult1 = -2;
     int16_t mult0_get, mult1_get;
     axi_multiplier_set_mult(mult0, 0);
     mult0_get = axi_multiplier_get_mult(0);
     axi_multiplier_set_mult(mult1, 1);
     mult1_get = axi_multiplier_get_mult(1);
-    printf("Set multiplier value %d for ch %d, returned %d", mult0, 0, mult0_get);
+    printf("Set multiplier value %d for ch %d, returned %d\n", mult0, 0, mult0_get);
     if (mult0 != mult0_get)
     {
-        printf(RED "Value is not set into multiplier ch 0" RESET);
+        printf(RED "Value is not set into multiplier ch 0" RESET "\n");
     }
-    printf("Set multiplier value %d for ch %d, returned %d", mult1, 1, mult1_get);
+    printf("Set multiplier value %d for ch %d, returned %d\n", mult1, 1, mult1_get);
     if (mult1 != mult1_get)
     {
-        printf(RED "Value is not set into multiplier ch 1" RESET);
+        printf(RED "Value is not set into multiplier ch 1" RESET "\n");
     }
 
     axi_multiplier_deinit();

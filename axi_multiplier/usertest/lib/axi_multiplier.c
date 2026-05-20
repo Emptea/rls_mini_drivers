@@ -38,6 +38,7 @@ uint32_t axi_multiplier_write(uint32_t val, uint32_t regmap_offset)
     if (write(fd, &val, sizeof(val)) != sizeof(val))
     {
         perror("write");
+        printf("Write error\n");
         axi_multiplier_deinit();
         return FD_ERR_WRITE;
     }
@@ -53,6 +54,7 @@ uint32_t axi_multiplier_read(uint32_t *val, uint32_t regmap_offset)
     if (read(fd, &rd, sizeof(rd)) != sizeof(rd))
     {
         perror("read");
+        printf("Read error\n");
         axi_multiplier_deinit();
         return FD_ERR_READ;
     }

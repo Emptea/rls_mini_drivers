@@ -8,36 +8,34 @@
 #include <linux/device.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
+#include <linux/slab.h>
 
 #define DRV_NAME "axi_multiplier"
 #define DEV_NAME "axi_multiplier"
 
-#define REG_OFFSET_IP_VER 0x00
-#define REG_OFFSET_KILL 0x04
+#define REG_OFFSET_IP_VER     0x00
+#define REG_OFFSET_KILL       0x04
 #define REG_OFFSET_TEST_POINT 0x08
-#define REG_OFFSET_CHANNEL 0x0C
-#define REG_OFFSET_MULT0 0x10
-#define REG_OFFSET_MULT1 0x14
+#define REG_OFFSET_CHANNEL    0x0C
+#define REG_OFFSET_MULT0      0x10
+#define REG_OFFSET_MULT1      0x14
 
 #define REG_MAX_OFFSET REG_OFFSET_MULT1
-#define REG_SIZE sizeof(u32)
+#define REG_SIZE       sizeof(u32)
 
-struct axi_mult_dev
-{
+struct axi_mult_dev {
+    struct device *dev;
     void __iomem *base;
     struct mutex lock;
+    dev_t devno;
+    struct cdev cdev;
+    struct class *class;
+    struct device *device;
 };
-
-static dev_t devno;
-static struct class *axi_class;
-static struct cdev axi_cdev;
-static struct device *axi_device;
-static struct axi_mult_dev *gdev;
 
 static bool reg_is_valid(u32 off)
 {
-    switch (off)
-    {
+    switch (off) {
     case REG_OFFSET_IP_VER:
     case REG_OFFSET_KILL:
     case REG_OFFSET_TEST_POINT:
@@ -59,8 +57,7 @@ static loff_t axi_llseek(struct file *filp, loff_t off, int whence)
 {
     loff_t newpos;
 
-    switch (whence)
-    {
+    switch (whence) {
     case SEEK_SET:
         newpos = off;
         break;
@@ -78,8 +75,16 @@ static loff_t axi_llseek(struct file *filp, loff_t off, int whence)
     return newpos;
 }
 
+static int axi_open(struct inode *inode, struct file *filp)
+{
+    struct axi_mult_dev *d = container_of(inode->i_cdev, struct axi_mult_dev, cdev);
+    filp->private_data = d;
+    return 0;
+}
+
 static ssize_t axi_mult_read(struct file *filp, char __user *buf, size_t len, loff_t *off)
 {
+    struct axi_mult_dev *d = filp->private_data;
     u32 value;
     u32 reg_off = *off;
 
@@ -89,20 +94,21 @@ static ssize_t axi_mult_read(struct file *filp, char __user *buf, size_t len, lo
     if (!reg_is_valid(reg_off))
         return -EINVAL;
 
-    mutex_lock(&gdev->lock);
-    value = readl(gdev->base + reg_off);
-    mutex_unlock(&gdev->lock);
+    mutex_lock(&d->lock);
+    value = readl(d->base + reg_off);
+    mutex_unlock(&d->lock);
 
     if (copy_to_user(buf, &value, sizeof(value)))
         return -EFAULT;
 
     *off += sizeof(value);
-    pr_info("axi_multiplier: read reg 0x%02x = 0x%08x\n", reg_off, value);
+    dev_info(d->dev, "read reg 0x%02x = 0x%08x\n", reg_off, value);
     return sizeof(value);
 }
 
 static ssize_t axi_mult_write(struct file *filp, const char __user *buf, size_t len, loff_t *off)
 {
+    struct axi_mult_dev *d = filp->private_data;
     u32 value;
     u32 reg_off = *off;
 
@@ -118,17 +124,24 @@ static ssize_t axi_mult_write(struct file *filp, const char __user *buf, size_t 
     if (copy_from_user(&value, buf, sizeof(value)))
         return -EFAULT;
 
-    mutex_lock(&gdev->lock);
-    writel(value, gdev->base + reg_off);
-    mutex_unlock(&gdev->lock);
+    mutex_lock(&d->lock);
+    writel(value, d->base + reg_off);
+    mutex_unlock(&d->lock);
 
     *off += sizeof(value);
-    pr_info("axi_multiplier: wrote reg 0x%02x = 0x%08x\n", reg_off, value);
+    dev_info(d->dev, "wrote reg 0x%02x = 0x%08x\n", reg_off, value);
     return sizeof(value);
+}
+
+static int axi_release(struct inode *inode, struct file *filp)
+{
+    return 0;
 }
 
 static const struct file_operations axi_fops = {
     .owner = THIS_MODULE,
+    .open = axi_open,
+    .release = axi_release,
     .read = axi_mult_read,
     .write = axi_mult_write,
     .llseek = axi_llseek,
@@ -136,66 +149,72 @@ static const struct file_operations axi_fops = {
 
 static int axi_mult_probe(struct platform_device *pdev)
 {
+    struct axi_mult_dev *d;
     struct resource *res;
     int ret;
 
-    pr_info("axi_multiplier: probe called\n");
+    dev_info(&pdev->dev, "probe called\n");
 
-    gdev = devm_kzalloc(&pdev->dev, sizeof(*gdev), GFP_KERNEL);
-    if (!gdev)
+    d = devm_kzalloc(&pdev->dev, sizeof(*d), GFP_KERNEL);
+    if (!d)
         return -ENOMEM;
 
-    mutex_init(&gdev->lock);
+    d->dev = &pdev->dev;
+    mutex_init(&d->lock);
 
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-    gdev->base = devm_ioremap_resource(&pdev->dev, res);
-    if (IS_ERR(gdev->base))
-        return PTR_ERR(gdev->base);
+    d->base = devm_ioremap_resource(&pdev->dev, res);
+    if (IS_ERR(d->base))
+        return PTR_ERR(d->base);
 
-    ret = alloc_chrdev_region(&devno, 0, 1, DEV_NAME);
+    ret = alloc_chrdev_region(&d->devno, 0, 1, DEV_NAME);
     if (ret)
         return ret;
 
-    cdev_init(&axi_cdev, &axi_fops);
-    axi_cdev.owner = THIS_MODULE;
+    cdev_init(&d->cdev, &axi_fops);
+    d->cdev.owner = THIS_MODULE;
 
-    ret = cdev_add(&axi_cdev, devno, 1);
+    ret = cdev_add(&d->cdev, d->devno, 1);
     if (ret)
         goto err_chrdev;
 
-    axi_class = class_create(THIS_MODULE, DEV_NAME);
-    if (IS_ERR(axi_class))
-    {
-        ret = PTR_ERR(axi_class);
+    d->class = class_create(THIS_MODULE, DEV_NAME);
+    if (IS_ERR(d->class)) {
+        ret = PTR_ERR(d->class);
         goto err_cdev;
     }
 
-    axi_device = device_create(axi_class, NULL, devno, NULL, DEV_NAME);
-    if (IS_ERR(axi_device))
-    {
-        ret = PTR_ERR(axi_device);
+    d->device = device_create(d->class, &pdev->dev, d->devno, d, DEV_NAME);
+    if (IS_ERR(d->device)) {
+        ret = PTR_ERR(d->device);
         goto err_class;
     }
 
-    pr_info("axi_multiplier: /dev/%s created\n", DEV_NAME);
+    platform_set_drvdata(pdev, d);
+
+    dev_info(&pdev->dev, "/dev/%s created\n", DEV_NAME);
     return 0;
 
 err_class:
-    class_destroy(axi_class);
+    class_destroy(d->class);
 err_cdev:
-    cdev_del(&axi_cdev);
+    cdev_del(&d->cdev);
 err_chrdev:
-    unregister_chrdev_region(devno, 1);
+    unregister_chrdev_region(d->devno, 1);
     return ret;
 }
 
 static int axi_mult_remove(struct platform_device *pdev)
 {
-    pr_info("axi_multiplier: remove called\n");
-    device_destroy(axi_class, devno);
-    class_destroy(axi_class);
-    cdev_del(&axi_cdev);
-    unregister_chrdev_region(devno, 1);
+    struct axi_mult_dev *d = platform_get_drvdata(pdev);
+
+    dev_info(&pdev->dev, "remove called\n");
+
+    device_destroy(d->class, d->devno);
+    class_destroy(d->class);
+    cdev_del(&d->cdev);
+    unregister_chrdev_region(d->devno, 1);
+
     return 0;
 }
 

@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     axi_multiplier_get_ip_ver(&ver_maj, &ver_min);
     printf("AXI Multiplier v%d.%d\n", ver_maj, ver_min);
 
-    uint32_t tp = 2;
+    uint32_t tp = 0;
     uint32_t tp_get;
     axi_multiplier_set_tp(tp);
     tp_get = axi_multiplier_get_tp();
@@ -34,9 +34,9 @@ int main(int argc, char *argv[])
         printf(RED "Test point check failed" RESET "\n");
     }
 
-    uint32_t ch = 1;
+    uint32_t ch = 0;
     uint32_t ch_get;
-    axi_multiplier_set_tp(ch);
+    axi_multiplier_set_ch(ch);
     ch_get = axi_multiplier_get_ch();
     printf("Set channel %d, returned %d\n", ch, ch_get);
     if (ch != ch_get)

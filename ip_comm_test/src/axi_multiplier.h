@@ -1,9 +1,7 @@
 #if !defined(AXI_MULTIPLIER_H)
 #define AXI_MULTIPLIER_H
 #include <stdint.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 
 enum fd_err
 {
@@ -32,8 +30,5 @@ void axi_multiplier_set_tp(uint32_t tp);
 void axi_multiplier_set_ch(uint32_t ch);
 void axi_multiplier_set_mult(int16_t val, uint32_t ch_num);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif // AXI_MULTIPLIER_H

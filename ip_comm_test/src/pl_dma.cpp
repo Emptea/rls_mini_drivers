@@ -26,6 +26,7 @@ pl_dma::pl_dma(pl_dma && other) noexcept
 	, m_end_time(other.m_end_time) {
 	other.m_start_time = 0;
 	other.m_end_time   = 0;
+	tx_thread.setPriority(PIThread::Priority::piLow);
 }
 
 pl_dma::~pl_dma() {}
@@ -104,55 +105,59 @@ void pl_dma::transmit() {
 	auto channel_ptr = static_cast<channel *>(&m_tx_ch[0]);
 
 	int counter = 0, buffer_id, in_progress_count = 0;
-	int stop_in_progress = 0;
-
 
 	for (buffer_id = 0; buffer_id < TX_BUFFER_COUNT; ++buffer_id) {
 		channel_ptr->buf_ptr[buffer_id].length = channel_ptr->buffer_size;
 
 		ioctl(channel_ptr->fd, START_XFER, &buffer_id);
 		printf("Start transfer for tx buffer %d\n", buffer_id);
-
-		if (++in_progress_count >= num_transfers) break;
+		in_progress_count++;
+		// if (++in_progress_count >= num_transfers) break;
 	}
 
 	buffer_id = 0;
 	while (true) {
-		ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
-		printf("Finish transfer for tx buffer %d, overall transfers %d\n", buffer_id, counter);
-		if (channel_ptr->buf_ptr[buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
-			fprintf(stderr, "Proxy tx transfer error\n");
-			if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_BUSY) {
-				fprintf(stderr, "Proxy tx busy\n");
+		if (in_progress_count) {
+			ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
+			if (channel_ptr->buf_ptr[buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
+				printf("Proxy tx transfer error, # transfers %d, # completed %d, # in progress %d\n",
+				       num_transfers,
+				       counter,
+				       in_progress_count);
+				if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_BUSY) {
+					fprintf(stderr, "Proxy tx busy\n");
+				}
+				if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_TIMEOUT) {
+					fprintf(stderr, "Proxy tx timeout\n");
+				}
+				errors_cnt.tx_errs++;
+				break;
 			}
-			if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_TIMEOUT) {
-				fprintf(stderr, "Proxy tx timeout\n");
-			}
-			errors_cnt.tx_errs++;
-			break;
+
+			in_progress_count--;
+			counter++;
 		}
 
-		in_progress_count--;
-		counter++;
-		if (counter >= num_transfers) break;
+		if (stop_in_progress && (counter >= num_transfers)) break;
 
-		if (channel_ptr->stop & !stop_in_progress) {
-			stop_in_progress = 1;
+
+		if (channel_ptr->stop && !stop_in_progress) {
+			stop_in_progress = true;
 			num_transfers    = counter + RX_BUFFER_COUNT;
+			printf("Stop in progress, num_transfers = %d\n", num_transfers);
 		}
 
-		if (!((counter + in_progress_count) >= num_transfers)) {
+		if (!channel_ptr->stop || ((counter + in_progress_count) < num_transfers)) {
 			/* Restart the completed channel buffer to start another transfer and keep
 			 * track of the number of transfers in progress
 			 */
 			ioctl(channel_ptr->fd, START_XFER, &buffer_id);
-			printf("Start transfer for tx buffer %d\n", buffer_id);
-
 			in_progress_count++;
+			if (stop_in_progress) printf("Tx counter + in progress: %d, num_transfers %d\n", counter + in_progress_count, num_transfers);
 		}
 		buffer_id = (buffer_id + 1) % TX_BUFFER_COUNT;
 	}
-	printf("Nothing to transmit\n");
+	printf("Proxy tx transfer stopped, # transfers %d, # completed %d, # in progress %d\n", num_transfers, counter, in_progress_count);
 }
 
 void pl_dma::receive() {
@@ -166,47 +171,50 @@ void pl_dma::receive() {
 		channel_ptr->buf_ptr[buffer_id].length = channel_ptr->buffer_size;
 		ioctl(channel_ptr->fd, START_XFER, &buffer_id);
 		printf("Start transfer for rx buffer %d\n", buffer_id);
-		if (++in_progress_count >= num_transfers) break;
+		in_progress_count++;
+		// if (++in_progress_count >= num_transfers) break;
 	}
 
 	buffer_id = 0;
 	while (true) {
-		ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
-		printf("Finish transfer for rx buffer %d, overall transfers %d\n", buffer_id, counter);
+		if (in_progress_count) {
+			ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
 
-		if (channel_ptr->buf_ptr[buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
-			printf("Proxy rx transfer error, # transfers %d, # completed %d, # in progress %d\n",
-			       num_transfers,
-			       counter,
-			       in_progress_count);
-			fprintf(stderr, "Proxy rx transfer error\n");
-			if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_BUSY) {
-				fprintf(stderr, "Proxy rx busy\n");
+			if (channel_ptr->buf_ptr[buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
+				printf("Proxy rx transfer error, # transfers %d, # completed %d, # in progress %d\n",
+				       num_transfers,
+				       counter,
+				       in_progress_count);
+				fprintf(stderr, "Proxy rx transfer error\n");
+				if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_BUSY) {
+					fprintf(stderr, "Proxy rx busy\n");
+				}
+				if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_TIMEOUT) {
+					fprintf(stderr, "Proxy rx timeout\n");
+				}
+				errors_cnt.rx_errs++;
+				// break;
+			} else {
+				in_progress_count--;
+				counter++;
 			}
-			if (channel_ptr->buf_ptr[buffer_id].status == channel_buffer::proxy_status::PROXY_TIMEOUT) {
-				fprintf(stderr, "Proxy rx timeout\n");
-			}
-			errors_cnt.rx_errs++;
-			break;
 		}
 
-		unsigned int * rxbuf = (unsigned int *)&channel_ptr->buf_ptr[buffer_id].buffer;
-
-		in_progress_count--;
-
-		if (++counter >= num_transfers) break;
+		if (stop_in_progress && (counter >= num_transfers)) break;
 
 		/* If the ones in progress will complete the number of transfers then don't start more
 		 * but finish the ones that are already started
 		 */
-		if ((counter + in_progress_count) < num_transfers) {
+		if (!stop_in_progress || ((counter + in_progress_count) < num_transfers)) {
 			ioctl(channel_ptr->fd, START_XFER, &buffer_id);
-			printf("Start transfer for rx buffer %d\n", buffer_id);
 			in_progress_count++;
+			if (stop_in_progress) printf("Rx counter + in progress: %d, num_transfers %d\n", counter + in_progress_count, num_transfers);
 		}
+
 
 		buffer_id = (buffer_id + 1) % RX_BUFFER_COUNT;
 	}
+	printf("Proxy rx transfer stopped, # transfers %d, # completed %d, # in progress %d\n", num_transfers, counter, in_progress_count);
 }
 
 int pl_dma::setup_threads() {

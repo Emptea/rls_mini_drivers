@@ -73,7 +73,8 @@ int main(int argc, char *argv[])
 
     int16_t start_cnt = 1;  // change this as needed
 
-    pl_dma dma_ch0, dma_ch1;
+    pl_dma dma_ch0;
+    // pl_dma dma_ch1;
 
     std::vector<pl_dma::ch_config> tx_ch0 = {{
         .devnode = TX_DEV_CH0,
@@ -86,10 +87,10 @@ int main(int argc, char *argv[])
     }};
 
 
-    std::vector<pl_dma::ch_config> tx_ch1 = {{
-        .devnode = TX_DEV_CH1,
-        .buffer_size = 4 * 1024,
-    }};
+    // std::vector<pl_dma::ch_config> tx_ch1 = {{
+    //     .devnode = TX_DEV_CH1,
+    //     .buffer_size = 4 * 1024,
+    // }};
 
 
     if (dma_ch0.init(tx_ch0, rx_ch0) != 0) {
@@ -98,30 +99,33 @@ int main(int argc, char *argv[])
     }
     dma_ch0.set_num_transfers(num_transfers);
 
-    if (dma_ch1.init(tx_ch1) != 0) {
-        printf("Init dma for ch1 failed\n");
-        return 1;
-    }
-    dma_ch1.set_num_transfers(num_transfers);
+    // if (dma_ch1.init(tx_ch1) != 0) {
+    //     printf("Init dma for ch1 failed\n");
+    //     return 1;
+    // }
+    // dma_ch1.set_num_transfers(num_transfers);
 
     uint8_t *rx_buf =  (uint8_t *)dma_ch0.get_rx_buffer(0);
     uint8_t *tx_buf0 = (uint8_t *)dma_ch0.get_tx_buffer(0);
-    uint8_t *tx_buf1 = (uint8_t *)dma_ch1.get_tx_buffer(0);
+    // uint8_t *tx_buf1 = (uint8_t *)dma_ch1.get_tx_buffer(0);
 
     fill_int16_buffer(tx_buf0, 4 * 1024, start_cnt);
-    fill_int16_buffer(tx_buf1, 4 * 1024, start_cnt + 10);  // different sequence
+    // fill_int16_buffer(tx_buf1, 4 * 1024, start_cnt + 10);  // different sequence
     axi_multiplier_set_ch(0);
     dma_ch0.start();
-    dma_ch1.start();
+    // dma_ch1.start();
 	WAIT_FOR_EXIT;
+    dma_ch0.stop_transfer();
+    dma_ch0.stop_receive();
+    // dma_ch1.stop_transfer();
     dma_ch0.stop();
-    dma_ch1.stop();
+    // dma_ch1.stop();
 
     auto stats = dma_ch0.get_stats();
     printf("Throughput: %d MB/s\n", stats.mb_per_sec);
 
     dma_ch0.cleanup();
-    dma_ch1.cleanup();
+    // dma_ch1.cleanup();
     axi_multiplier_deinit();
 	piDeleteSafety(kbd);
 

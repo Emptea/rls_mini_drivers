@@ -37,7 +37,9 @@ private:
 	uint64_t m_start_time = 0;
 	uint64_t m_end_time   = 0;
 
+	int init_num_transfers     = 0;
 	int num_transfers     = 0;
+	bool stop_in_progress = false;
 
 	int setup_threads();
 	void cleanup_channels();
@@ -99,6 +101,12 @@ public:
 
 	void stop_transfer() {
 		for (auto & ch: m_tx_ch) {
+			ch.stop = 1;
+		}
+	}
+
+	void stop_receive() {
+		for (auto & ch: m_rx_ch) {
 			ch.stop = 1;
 		}
 	}

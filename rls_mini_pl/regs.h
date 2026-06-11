@@ -11,7 +11,7 @@
 #include <cstdint>
 extern "C" {
 #else
-#include <stdint.h>
+// #include <stdint.h>
 #endif
 
 #define CSR_BASE_ADDR 0x0

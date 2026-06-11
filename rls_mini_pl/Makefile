@@ -4,4 +4,4 @@ all:
 clean:
 	rm -rf *.o *.cmd *.order Module.symvers *.ko *.mod* ./.* .tmp_versions
  
-obj-m +=  pl_reset.o
+obj-m +=  rls_mini_pl.o

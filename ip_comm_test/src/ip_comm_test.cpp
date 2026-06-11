@@ -294,12 +294,13 @@ void fill_int16_buffer(
     }
 }
 
-static int init_dma_tx (pl_dma dma, std::vector<pl_dma::ch_config> tx_dma, uint32_t num_transfers){
+static int init_dma_tx (pl_dma &dma, std::vector<pl_dma::ch_config> tx_dma, uint32_t num_transfers){
     if (dma.init(tx_dma) != 0) {
         printf("Init dma for ch0 failed\n");
         return 1;
     }
     dma.set_num_transfers(num_transfers);
+    return 0;
 }
 
 

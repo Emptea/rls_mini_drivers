@@ -273,7 +273,7 @@ int fill_buffer_from_file(
     return 0;
 }
 
- * Fill a uint8_t buffer with int16_t values starting from `start_cnt`.
+ /* Fill a uint8_t buffer with int16_t values starting from `start_cnt`.
  *
  * Assumptions:
  * - buffer_size is at least even (multiple of 2) in bytes.
@@ -307,7 +307,7 @@ static int init_dma_tx (pl_dma dma, std::vector<pl_dma::ch_config> tx_dma, uint3
 int main(int argc, char *argv[])
 {
     if (argc < 5) {
-        printf("usage: %s <test_point> <channel> <num_transfers> <input_file>\n", argv[0]);
+        printf("usage: %s <test_point> <channel> <num_transfers> <input_file> <output_file>\n", argv[0]);
         return 1;
     }
 
@@ -331,6 +331,7 @@ int main(int argc, char *argv[])
     uint32_t channel = (uint32_t)strtol(argv[2], NULL, 0);
     uint32_t num_transfers = (uint32_t)strtol(argv[3], NULL, 0);
     const char* input_file = argv[4];
+    const char* output_file = argv[5];  // File to dump RX data (optional, can be empty string)
     
     axi_dsp_init();
     axi_dsp_set_test_point(test_point);
@@ -424,7 +425,6 @@ int main(int argc, char *argv[])
     }
 
     
-    axi_multiplier_set_ch(0);
     dma_ch0.start();
     dma_ch1.start();
     WAIT_FOR_EXIT;

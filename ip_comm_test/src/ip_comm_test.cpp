@@ -334,6 +334,7 @@ int main(int argc, char *argv[])
     const char* input_file = argv[4];
     const char* output_file = argv[5];  // File to dump RX data (optional, can be empty string)
     
+    uint32_t buf_size = 4*1024;
     axi_dsp_init();
     axi_dsp_set_test_point(test_point);
     axi_dsp_set_channel(channel);
@@ -346,47 +347,47 @@ int main(int argc, char *argv[])
 
     std::vector<pl_dma::ch_config> tx_ch0 = {{
         .devnode = TX_DEV_CH0,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> rx_ch0 = {{
         .devnode = RX_DEV,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch1 = {{
         .devnode = TX_DEV_CH1,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch2 = {{
         .devnode = TX_DEV_CH2,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch3 = {{
         .devnode = TX_DEV_CH3,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch4 = {{
         .devnode = TX_DEV_CH4,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch5 = {{
         .devnode = TX_DEV_CH5,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch6 = {{
         .devnode = TX_DEV_CH6,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     std::vector<pl_dma::ch_config> tx_ch7 = {{
         .devnode = TX_DEV_CH7,
-        .buffer_size = 4 * 1024,
+        .buffer_size = buf_size,
     }};
 
     if (dma_ch0.init(tx_ch0, rx_ch0) != 0) {
@@ -415,25 +416,77 @@ int main(int argc, char *argv[])
 
 
     // Fill tx_buf0 from file for the specified channel
-    if (read_channel_from_file(input_file, 0, tx_buf0, 4 * 1024) != 0) {
-        printf("Failed to read channel %d from file\n", 0);
+    if (read_channel_from_file(input_file, 0, tx_buf0, buf_size) != 0) {
+        printf("Failed to read channel from file for ch0\n");
         return 1;
     }
     
-    if (read_channel_from_file(input_file, 1, tx_buf1, 4 * 1024) != 0) {
-        printf("Failed to read channel %d from file for ch1\n", 1);
+    if (read_channel_from_file(input_file, 1, tx_buf1, buf_size) != 0) {
+        printf("Failed to read channel from file for ch1\n");
+        return 1;
+    }
+    
+    if (read_channel_from_file(input_file, 2, tx_buf2, buf_size) != 0) {
+        printf("Failed to read channel from file for ch2\n");
         return 1;
     }
 
+        if (read_channel_from_file(input_file, 2, tx_buf2, buf_size) != 0) {
+        printf("Failed to read channel from file for ch2\n");
+        return 1;
+    }
+
+    if (read_channel_from_file(input_file, 3, tx_buf3, buf_size) != 0) {
+        printf("Failed to read channel from file for ch3\n");
+        return 1;
+    }
+
+    if (read_channel_from_file(input_file, 4, tx_buf4, buf_size) != 0) {
+        printf("Failed to read channel from file for ch4\n");
+        return 1;
+    }
+
+    if (read_channel_from_file(input_file, 5, tx_buf5, buf_size) != 0) {
+        printf("Failed to read channel from file for ch5\n");
+        return 1;
+    }
+        
+    if (read_channel_from_file(input_file, 6, tx_buf6, buf_size) != 0) {
+        printf("Failed to read channel from file for ch6\n");
+        return 1;
+    }
+
+    if (read_channel_from_file(input_file, 7, tx_buf7, buf_size) != 0) {
+        printf("Failed to read channel from file for ch7\n");
+        return 1;
+    }
     
     dma_ch0.start();
     dma_ch1.start();
+    dma_ch2.start();
+    dma_ch3.start();
+    dma_ch4.start();
+    dma_ch5.start();
+    dma_ch6.start();
+    dma_ch7.start();
     WAIT_FOR_EXIT;
     dma_ch0.stop_transfer();
     dma_ch0.stop_receive();
     dma_ch1.stop_transfer();
+    dma_ch2.stop_transfer();
+    dma_ch3.stop_transfer();
+    dma_ch4.stop_transfer();
+    dma_ch5.stop_transfer();
+    dma_ch6.stop_transfer();
+    dma_ch7.stop_transfer();
     dma_ch0.stop();
     dma_ch1.stop();
+    dma_ch2.stop();
+    dma_ch3.stop();
+    dma_ch4.stop();
+    dma_ch5.stop();
+    dma_ch6.stop();
+    dma_ch7.stop();
 
 
     auto stats = dma_ch0.get_stats();

@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -308,7 +309,7 @@ static int init_dma_tx (pl_dma &dma, std::vector<pl_dma::ch_config> tx_dma, uint
 int main(int argc, char *argv[])
 {
     if (argc < 5) {
-        printf("usage: %s <test_point> <channel> <num_transfers> <input_file> <output_file>\n", argv[0]);
+        printf("usage: %s <test_point> <channel> <input_file> <output_file>\n", argv[0]);
         return 1;
     }
 
@@ -330,11 +331,12 @@ int main(int argc, char *argv[])
 
     uint32_t test_point = (uint32_t)strtol(argv[1], NULL, 0);
     uint32_t channel = (uint32_t)strtol(argv[2], NULL, 0);
-    uint32_t num_transfers = (uint32_t)strtol(argv[3], NULL, 0);
-    const char* input_file = argv[4];
-    const char* output_file = argv[5];  // File to dump RX data (optional, can be empty string)
+    const char* input_file = argv[3];
+    const char* output_file = argv[4];  // File to dump RX data (optional, can be empty string)
     
     uint32_t buf_size = 4*1024;
+    uint32_t num_transfers = 0;
+
     axi_dsp_init();
     axi_dsp_set_test_point(test_point);
     axi_dsp_set_channel(channel);
@@ -421,45 +423,14 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    if (read_channel_from_file(input_file, 1, tx_buf1, buf_size) != 0) {
-        printf("Failed to read channel from file for ch1\n");
-        return 1;
-    }
-    
-    if (read_channel_from_file(input_file, 2, tx_buf2, buf_size) != 0) {
-        printf("Failed to read channel from file for ch2\n");
-        return 1;
-    }
-
-        if (read_channel_from_file(input_file, 2, tx_buf2, buf_size) != 0) {
-        printf("Failed to read channel from file for ch2\n");
-        return 1;
-    }
-
-    if (read_channel_from_file(input_file, 3, tx_buf3, buf_size) != 0) {
-        printf("Failed to read channel from file for ch3\n");
-        return 1;
-    }
-
-    if (read_channel_from_file(input_file, 4, tx_buf4, buf_size) != 0) {
-        printf("Failed to read channel from file for ch4\n");
-        return 1;
-    }
-
-    if (read_channel_from_file(input_file, 5, tx_buf5, buf_size) != 0) {
-        printf("Failed to read channel from file for ch5\n");
-        return 1;
-    }
-        
-    if (read_channel_from_file(input_file, 6, tx_buf6, buf_size) != 0) {
-        printf("Failed to read channel from file for ch6\n");
-        return 1;
-    }
-
-    if (read_channel_from_file(input_file, 7, tx_buf7, buf_size) != 0) {
-        printf("Failed to read channel from file for ch7\n");
-        return 1;
-    }
+    read_channel_from_file(input_file, 1, tx_buf1, buf_size);    
+    read_channel_from_file(input_file, 2, tx_buf2, buf_size);
+    read_channel_from_file(input_file, 2, tx_buf2, buf_size);
+    read_channel_from_file(input_file, 3, tx_buf3, buf_size);
+    read_channel_from_file(input_file, 4, tx_buf4, buf_size);
+    read_channel_from_file(input_file, 5, tx_buf5, buf_size);        
+    read_channel_from_file(input_file, 6, tx_buf6, buf_size);
+    read_channel_from_file(input_file, 7, tx_buf7, buf_size);    
     
     dma_ch0.start();
     dma_ch1.start();
@@ -469,7 +440,9 @@ int main(int argc, char *argv[])
     dma_ch5.start();
     dma_ch6.start();
     dma_ch7.start();
+    
     WAIT_FOR_EXIT;
+
     dma_ch0.stop_transfer();
     dma_ch0.stop_receive();
     dma_ch1.stop_transfer();
@@ -479,6 +452,7 @@ int main(int argc, char *argv[])
     dma_ch5.stop_transfer();
     dma_ch6.stop_transfer();
     dma_ch7.stop_transfer();
+
     dma_ch0.stop();
     dma_ch1.stop();
     dma_ch2.stop();
@@ -487,7 +461,6 @@ int main(int argc, char *argv[])
     dma_ch5.stop();
     dma_ch6.stop();
     dma_ch7.stop();
-
 
     auto stats = dma_ch0.get_stats();
     printf("Throughput: %d MB/s\n", stats.mb_per_sec);
@@ -519,9 +492,10 @@ int main(int argc, char *argv[])
     dma_ch5.cleanup();
     dma_ch6.cleanup();
     dma_ch7.cleanup();
-    axi_dsp_deinit();
-    piDeleteSafety(kbd);
 
+    axi_dsp_deinit();
+    
+    piDeleteSafety(kbd);
 
     return 0;
 }

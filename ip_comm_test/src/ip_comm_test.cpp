@@ -339,7 +339,7 @@ int main(int argc, char *argv[])
 
 
     pl_dma dma_ch0;
-    pl_dma dma_ch1;
+    pl_dma dma_ch1, dma_ch2, dma_ch3, dma_ch4, dma_ch5, dma_ch6, dma_ch7;
 
 
     std::vector<pl_dma::ch_config> tx_ch0 = {{

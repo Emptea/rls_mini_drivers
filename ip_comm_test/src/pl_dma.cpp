@@ -193,7 +193,7 @@ void pl_dma::receive() {
 					fprintf(stderr, "Proxy rx timeout\n");
 				}
 				errors_cnt.rx_errs++;
-				// break;
+				break;
 			} else {
 				in_progress_count--;
 				counter++;

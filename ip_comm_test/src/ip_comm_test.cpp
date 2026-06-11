@@ -6,7 +6,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 
-#include "axi_multiplier.h"
+#include "axi_dsp.h"
 #include "pl_dma.hpp" 
 
 #include <picli.h>
@@ -14,16 +14,17 @@
 #include <piliterals_time.h>
 #include <piscreen.h>
 #include <pisignals.h>
+#include <string.h>
 
 #define RX_DEV "/dev/dma_proxy_rx"
 #define TX_DEV_CH0 "/dev/dma_proxy_tx_ch0"
 #define TX_DEV_CH1 "/dev/dma_proxy_tx_ch1"
-#define TX_DEV_CH1 "/dev/dma_proxy_tx_ch2"
-#define TX_DEV_CH1 "/dev/dma_proxy_tx_ch3"
-#define TX_DEV_CH1 "/dev/dma_proxy_tx_ch4"
-#define TX_DEV_CH1 "/dev/dma_proxy_tx_ch5"
-#define TX_DEV_CH1 "/dev/dma_proxy_tx_ch6"
-#define TX_DEV_CH1 "/dev/dma_proxy_tx_ch7"
+#define TX_DEV_CH2 "/dev/dma_proxy_tx_ch2"
+#define TX_DEV_CH3 "/dev/dma_proxy_tx_ch3"
+#define TX_DEV_CH4 "/dev/dma_proxy_tx_ch4"
+#define TX_DEV_CH5 "/dev/dma_proxy_tx_ch5"
+#define TX_DEV_CH6 "/dev/dma_proxy_tx_ch6"
+#define TX_DEV_CH7 "/dev/dma_proxy_tx_ch7"
 
 /**
  * Parse a 4-character hex string to int16_t (signed).
@@ -141,7 +142,97 @@ int read_channel_from_file(
     return 0;
 }
 
-/**/**
+/**
+ * Dump int16 buffer to hex file.
+ * Buffer contains interleaved re/im for a single channel: re0, im0, re1, im1, re2, im2, ...
+ * 
+ * Output format: re0_im0 re1_im1 re2_im2 ... (64 hex chars = 16 int16 per line)
+ * 
+ * @param buffer Input buffer containing int16_t values (re/im interleaved)
+ * @param buffer_size_bytes Size of buffer in bytes
+ * @param output_filename Path to output hex file
+ * @return 0 on success, -1 on error
+ */
+int dump_buffer_to_file(
+    const uint8_t* buffer,
+    size_t buffer_size_bytes,
+    const char* output_filename
+)
+{
+    FILE* fp = fopen(output_filename, "w");
+    if (!fp) {
+        printf("Failed to open output file %s: %s\n", output_filename, strerror(errno));
+        return -1;
+    }
+
+    size_t num_int16 = buffer_size_bytes / sizeof(int16_t);
+    const int16_t* buf16 = reinterpret_cast<const int16_t*>(buffer);
+
+    // Group into lines of 16 int16 values (8 re/im pairs = 64 hex chars)
+    const size_t int16_per_line = 16;
+    char line_buffer[256];  // 16 int16 * 4 hex chars = 64 chars, plus newline
+    size_t line_pos = 0;
+
+    for (size_t i = 0; i < num_int16; i += 2) {
+        if (i + 1 >= num_int16) break;  // Need pairs
+
+        int16_t re_val = buf16[i];
+        int16_t im_val = buf16[i + 1];
+
+        // Convert to 4-char hex (uppercase, zero-padded)
+        char re_hex[5];
+        char im_hex[5];
+        
+        snprintf(re_hex, 5, "%04X", (uint16_t)re_val);
+        snprintf(im_hex, 5, "%04X", (uint16_t)im_val);
+
+        // Add re_im to line buffer (8 hex chars per pair)
+        if (line_pos + 8 >= sizeof(line_buffer)) {
+            // Write line and reset
+            line_buffer[line_pos] = '\0';
+            fprintf(fp, "%s\n", line_buffer);
+            line_pos = 0;
+        }
+
+        snprintf(line_buffer + line_pos, 9, "%s%s", re_hex, im_hex);
+        line_pos += 8;
+    }
+
+    // Write final line if not empty
+    if (line_pos > 0) {
+        line_buffer[line_pos] = '\0';
+        fprintf(fp, "%s\n", line_buffer);
+    }
+
+    fclose(fp);
+
+    size_t total_samples = num_int16 / 2;
+    printf("Dumped %zu int16 values (%zu re/im pairs) to %s\n",
+           num_int16, total_samples, output_filename);
+
+    return 0;
+}
+
+
+/**
+ * Dump RX buffer from DMA to hex file.
+ * Reads the RX buffer and writes it as re/im pairs.
+ * 
+ * @param rx_buf RX buffer from DMA (uint8_t*)
+ * @param buffer_size_bytes Size of RX buffer in bytes
+ * @param output_filename Path to output hex file
+ * @return 0 on success, -1 on error
+ */
+int dump_dma_rx_to_file(
+    const uint8_t* rx_buf,
+    size_t buffer_size_bytes,
+    const char* output_filename
+)
+{
+    return dump_buffer_to_file(rx_buf, buffer_size_bytes, output_filename);
+}
+
+/**
  * Fill a uint8_t buffer from a file containing int16_t values.
  *
  * Assumptions:
@@ -203,11 +294,20 @@ void fill_int16_buffer(
     }
 }
 
+static int init_dma_tx (pl_dma dma, std::vector<pl_dma::ch_config> tx_dma, uint32_t num_transfers){
+    if (dma.init(tx_dma) != 0) {
+        printf("Init dma for ch0 failed\n");
+        return 1;
+    }
+    dma.set_num_transfers(num_transfers);
+}
+
+
 
 int main(int argc, char *argv[])
 {
-    if (argc < 6) {
-        printf("usage: %s <mult_ch0> <mult_ch1> <num_transfers> <input_file> <channel>\n", argv[0]);
+    if (argc < 5) {
+        printf("usage: %s <test_point> <channel> <num_transfers> <input_file>\n", argv[0]);
         return 1;
     }
 
@@ -227,15 +327,15 @@ int main(int argc, char *argv[])
     kbd->enableExitCapture(PIKbdListener::F10);
 
 
-    int16_t mult0 = (int16_t)strtol(argv[1], NULL, 0);
-    int16_t mult1 = (int16_t)strtol(argv[2], NULL, 0);
-    int16_t num_transfers = (int16_t)strtol(argv[3], NULL, 0);
+    uint32_t test_point = (uint32_t)strtol(argv[1], NULL, 0);
+    uint32_t channel = (uint32_t)strtol(argv[2], NULL, 0);
+    uint32_t num_transfers = (uint32_t)strtol(argv[3], NULL, 0);
     const char* input_file = argv[4];
-    int channel = atoi(argv[5]);  // Channel to extract (0-7)
     
-    axi_multiplier_init();
-    axi_multiplier_set_mult(mult0, 0);
-    axi_multiplier_set_mult(mult1, 1);
+    axi_dsp_init();
+    axi_dsp_set_test_point(test_point);
+    axi_dsp_set_channel(channel);
+    axi_dsp_apply();
 
 
     pl_dma dma_ch0;
@@ -247,20 +347,45 @@ int main(int argc, char *argv[])
         .buffer_size = 4 * 1024,
     }};
 
-
     std::vector<pl_dma::ch_config> rx_ch0 = {{
         .devnode = RX_DEV,
         .buffer_size = 4 * 1024,
     }};
-
-
 
     std::vector<pl_dma::ch_config> tx_ch1 = {{
         .devnode = TX_DEV_CH1,
         .buffer_size = 4 * 1024,
     }};
 
+    std::vector<pl_dma::ch_config> tx_ch2 = {{
+        .devnode = TX_DEV_CH2,
+        .buffer_size = 4 * 1024,
+    }};
 
+    std::vector<pl_dma::ch_config> tx_ch3 = {{
+        .devnode = TX_DEV_CH3,
+        .buffer_size = 4 * 1024,
+    }};
+
+    std::vector<pl_dma::ch_config> tx_ch4 = {{
+        .devnode = TX_DEV_CH4,
+        .buffer_size = 4 * 1024,
+    }};
+
+    std::vector<pl_dma::ch_config> tx_ch5 = {{
+        .devnode = TX_DEV_CH5,
+        .buffer_size = 4 * 1024,
+    }};
+
+    std::vector<pl_dma::ch_config> tx_ch6 = {{
+        .devnode = TX_DEV_CH6,
+        .buffer_size = 4 * 1024,
+    }};
+
+    std::vector<pl_dma::ch_config> tx_ch7 = {{
+        .devnode = TX_DEV_CH7,
+        .buffer_size = 4 * 1024,
+    }};
 
     if (dma_ch0.init(tx_ch0, rx_ch0) != 0) {
         printf("Init dma for ch0 failed\n");
@@ -268,32 +393,36 @@ int main(int argc, char *argv[])
     }
     dma_ch0.set_num_transfers(num_transfers);
 
-
-    if (dma_ch1.init(tx_ch1) != 0) {
-        printf("Init dma for ch1 failed\n");
-        return 1;
-    }
-    dma_ch1.set_num_transfers(num_transfers);
-
+    init_dma_tx(dma_ch1, tx_ch1, num_transfers);
+    init_dma_tx(dma_ch2, tx_ch2, num_transfers);
+    init_dma_tx(dma_ch3, tx_ch3, num_transfers);
+    init_dma_tx(dma_ch4, tx_ch4, num_transfers);
+    init_dma_tx(dma_ch5, tx_ch5, num_transfers);
+    init_dma_tx(dma_ch6, tx_ch6, num_transfers);
+    init_dma_tx(dma_ch7, tx_ch7, num_transfers);
 
     uint8_t *rx_buf =  (uint8_t *)dma_ch0.get_rx_buffer(0);
     uint8_t *tx_buf0 = (uint8_t *)dma_ch0.get_tx_buffer(0);
     uint8_t *tx_buf1 = (uint8_t *)dma_ch1.get_tx_buffer(0);
+    uint8_t *tx_buf2 = (uint8_t *)dma_ch2.get_tx_buffer(0);
+    uint8_t *tx_buf3 = (uint8_t *)dma_ch3.get_tx_buffer(0);
+    uint8_t *tx_buf4 = (uint8_t *)dma_ch4.get_tx_buffer(0);
+    uint8_t *tx_buf5 = (uint8_t *)dma_ch5.get_tx_buffer(0);
+    uint8_t *tx_buf6 = (uint8_t *)dma_ch6.get_tx_buffer(0);
+    uint8_t *tx_buf7 = (uint8_t *)dma_ch7.get_tx_buffer(0);
 
 
     // Fill tx_buf0 from file for the specified channel
-    if (read_channel_from_file(input_file, channel, tx_buf0, 4 * 1024) != 0) {
-        printf("Failed to read channel %d from file\n", channel);
+    if (read_channel_from_file(input_file, 0, tx_buf0, 4 * 1024) != 0) {
+        printf("Failed to read channel %d from file\n", 0);
         return 1;
     }
     
-    // For tx_buf1, you can use a different channel or the same
-    // Example: use channel+1 for ch1 (if channel < 7)
-    int channel1 = (channel + 1) % 8;
-    if (read_channel_from_file(input_file, channel1, tx_buf1, 4 * 1024) != 0) {
-        printf("Failed to read channel %d from file for ch1\n", channel1);
+    if (read_channel_from_file(input_file, 1, tx_buf1, 4 * 1024) != 0) {
+        printf("Failed to read channel %d from file for ch1\n", 1);
         return 1;
     }
+
     
     axi_multiplier_set_ch(0);
     dma_ch0.start();
@@ -309,10 +438,34 @@ int main(int argc, char *argv[])
     auto stats = dma_ch0.get_stats();
     printf("Throughput: %d MB/s\n", stats.mb_per_sec);
 
+   // Dump RX buffer to hex file (only re/im pairs for one channel)
+    if (output_file && strlen(output_file) > 0) {
+        if (dump_dma_rx_to_file(rx_buf, 4 * 1024, output_file) != 0) {
+            printf("Failed to dump RX buffer to file\n");
+            return 1;
+        }
+    }
+
+    // Also dump to binary file for raw data
+    {
+        const char* binary_output = "rx_dump_binary.bin";
+        FILE* bin_fp = fopen(binary_output, "wb");
+        if (bin_fp) {
+            fwrite(rx_buf, 1, 4 * 1024, bin_fp);
+            fclose(bin_fp);
+            printf("Dumped RX buffer to binary file: %s\n", binary_output);
+        }
+    }
 
     dma_ch0.cleanup();
     dma_ch1.cleanup();
-    axi_multiplier_deinit();
+    dma_ch2.cleanup();
+    dma_ch3.cleanup();
+    dma_ch4.cleanup();
+    dma_ch5.cleanup();
+    dma_ch6.cleanup();
+    dma_ch7.cleanup();
+    axi_dsp_deinit();
     piDeleteSafety(kbd);
 
 

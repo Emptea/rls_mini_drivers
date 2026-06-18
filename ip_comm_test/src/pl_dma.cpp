@@ -67,6 +67,7 @@ int pl_dma::init(const std::vector<ch_config> & tx_channels, const std::vector<c
 		}
 
 		ch.buffer_size = cfg.buffer_size;
+		config = cfg;
 	}
 
 	m_rx_ch.resize(rx_channels.size());
@@ -157,7 +158,7 @@ void pl_dma::transmit() {
 		}
 		buffer_id = (buffer_id + 1) % TX_BUFFER_COUNT;
 	}
-	printf("Proxy tx transfer stopped, # transfers %d, # completed %d, # in progress %d\n", num_transfers, counter, in_progress_count);
+	printf("Proxy tx transfer stopped for devnode %s, # transfers %d, # completed %d, # in progress %d\n", config.devnode.c_str(), num_transfers, counter, in_progress_count);
 }
 
 void pl_dma::receive() {

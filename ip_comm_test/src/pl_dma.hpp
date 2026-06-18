@@ -55,7 +55,7 @@ public:
 	struct ch_config {
 		std::string devnode;
 		int buffer_size;
-	};
+	} config;
 
 	pl_dma() = default;
 	~pl_dma();

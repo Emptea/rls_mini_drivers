@@ -3,14 +3,6 @@
 #include <stdint.h>
 
 
-enum fd_err
-{
-   FD_ERR_NONE,
-   FD_ERR_WRITE,
-   FD_ERR_READ,
-   FD_ERR_NO_DEVICE,
-};
-
 uint32_t axi_multiplier_init();
 void axi_multiplier_deinit();
 uint32_t axi_multiplier_write(uint32_t val, uint32_t regmap_offset);

@@ -1,23 +1,23 @@
-#include <cstdint>
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
-
 #include "axi_dsp.h"
-#include "pl_dma.hpp" 
+#include "axi_multiplier.h"
+#include "pl_dma.hpp"
 
+#include <cstdint>
+#include <fcntl.h>
 #include <picli.h>
 #include <pikbdlistener.h>
 #include <piliterals_time.h>
 #include <piscreen.h>
 #include <pisignals.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <unistd.h>
 
-#define RX_DEV "/dev/dma_proxy_rx"
+#define RX_DEV     "/dev/dma_proxy_rx"
 #define TX_DEV_CH0 "/dev/dma_proxy_tx_ch0"
 #define TX_DEV_CH1 "/dev/dma_proxy_tx_ch1"
 #define TX_DEV_CH2 "/dev/dma_proxy_tx_ch2"
@@ -27,12 +27,14 @@
 #define TX_DEV_CH6 "/dev/dma_proxy_tx_ch6"
 #define TX_DEV_CH7 "/dev/dma_proxy_tx_ch7"
 
+// #define AXI_MULTIPLIER
+
+
 /**
  * Parse a 4-character hex string to int16_t (signed).
  * Example: "FFD6" -> -42 (0xFFD6 as signed 16-bit)
  */
-static int16_t hex_to_int16(const char* hex_str)
-{
+static int16_t hex_to_int16(const char * hex_str) {
     uint16_t val = (uint16_t)strtoul(hex_str, NULL, 16);
     return (int16_t)val;
 }
@@ -51,19 +53,13 @@ static int16_t hex_to_int16(const char* hex_str)
  * @param buffer_size_bytes Size of buffer in bytes
  * @return 0 on success, -1 on error
  */
-int read_channel_from_file(
-    const char* filename,
-    int channel,
-    uint8_t* buffer,
-    size_t buffer_size_bytes
-)
-{
+int read_channel_from_file(const char * filename, int channel, uint8_t * buffer, size_t buffer_size_bytes) {
     if (channel < 0 || channel > 7) {
         printf("Invalid channel: %d (must be 0-7)\n", channel);
         return -1;
     }
 
-    FILE* fp = fopen(filename, "r");
+	FILE * fp = fopen(filename, "r");
     if (!fp) {
         printf("Failed to open file %s: %s\n", filename, strerror(errno));
         return -1;
@@ -71,10 +67,10 @@ int read_channel_from_file(
 
     // Each sample has 8 channels * 4 hex chars = 32 hex chars per sample block
     // Channel offset within each block: channel * 2 (each channel has re + im = 2 values)
-    int channel_offset = channel * 2;  // 0, 2, 4, 6, 8, 10, 12, 14
+	int channel_offset        = channel * 2; // 0, 2, 4, 6, 8, 10, 12, 14
 
     size_t max_int16_elements = buffer_size_bytes / sizeof(int16_t);
-    size_t int16_count = 0;
+	size_t int16_count        = 0;
 
     char line[256];
     size_t samples_read = 0;
@@ -90,7 +86,7 @@ int read_channel_from_file(
         }
         clean_line[j] = '\0';
 
-        if (j == 0) continue;  // Empty line
+		if (j == 0) continue; // Empty line
 
         // Each sample block is 8 channels * 4 chars each = 32 hex chars
         // But the file might have multiple samples per line
@@ -108,15 +104,15 @@ int read_channel_from_file(
             
             memcpy(re_hex, clean_line + pos + re_offset, 4);
             memcpy(im_hex, clean_line + pos + im_offset, 4);
-            re_hex[4] = '\0';
-            im_hex[4] = '\0';
+			re_hex[4]      = '\0';
+			im_hex[4]      = '\0';
 
             int16_t re_val = hex_to_int16(re_hex);
             int16_t im_val = hex_to_int16(im_hex);
 
             // Fill buffer: re, im, re, im, ...
             if (int16_count + 2 <= max_int16_elements) {
-                int16_t* buf16 = reinterpret_cast<int16_t*>(buffer);
+				int16_t * buf16      = reinterpret_cast<int16_t *>(buffer);
                 buf16[int16_count++] = re_val;
                 buf16[int16_count++] = im_val;
             }
@@ -132,13 +128,12 @@ int read_channel_from_file(
     }
 
     // Pad remaining buffer with zeros if file was smaller than buffer
-    int16_t* buf16 = reinterpret_cast<int16_t*>(buffer);
+	int16_t * buf16 = reinterpret_cast<int16_t *>(buffer);
     for (size_t i = int16_count; i < max_int16_elements; i++) {
         buf16[i] = 0;
     }
 
-    printf("Loaded %zu int16 values (%zu real+imag pairs) for channel %d from %s\n",
-           int16_count, int16_count / 2, channel, filename);
+	printf("Loaded %zu int16 values (%zu real+imag pairs) for channel %d from %s\n", int16_count, int16_count / 2, channel, filename);
     
     return 0;
 }
@@ -154,28 +149,23 @@ int read_channel_from_file(
  * @param output_filename Path to output hex file
  * @return 0 on success, -1 on error
  */
-int dump_buffer_to_file(
-    const uint8_t* buffer,
-    size_t buffer_size_bytes,
-    const char* output_filename
-)
-{
-    FILE* fp = fopen(output_filename, "w");
+int dump_buffer_to_file(const uint8_t * buffer, size_t buffer_size_bytes, const char * output_filename) {
+	FILE * fp = fopen(output_filename, "w");
     if (!fp) {
         printf("Failed to open output file %s: %s\n", output_filename, strerror(errno));
         return -1;
     }
 
-    size_t num_int16 = buffer_size_bytes / sizeof(int16_t);
-    const int16_t* buf16 = reinterpret_cast<const int16_t*>(buffer);
+	size_t num_int16            = buffer_size_bytes / sizeof(int16_t);
+	const int16_t * buf16       = reinterpret_cast<const int16_t *>(buffer);
 
     // Group into lines of 16 int16 values (8 re/im pairs = 64 hex chars)
     const size_t int16_per_line = 16;
-    char line_buffer[256];  // 16 int16 * 4 hex chars = 64 chars, plus newline
+	char line_buffer[256]; // 16 int16 * 4 hex chars = 64 chars, plus newline
     size_t line_pos = 0;
 
     for (size_t i = 0; i < num_int16; i += 2) {
-        if (i + 1 >= num_int16) break;  // Need pairs
+		if (i + 1 >= num_int16) break; // Need pairs
 
         int16_t re_val = buf16[i];
         int16_t im_val = buf16[i + 1];
@@ -208,8 +198,7 @@ int dump_buffer_to_file(
     fclose(fp);
 
     size_t total_samples = num_int16 / 2;
-    printf("Dumped %zu int16 values (%zu re/im pairs) to %s\n",
-           num_int16, total_samples, output_filename);
+	printf("Dumped %zu int16 values (%zu re/im pairs) to %s\n", num_int16, total_samples, output_filename);
 
     return 0;
 }
@@ -224,12 +213,7 @@ int dump_buffer_to_file(
  * @param output_filename Path to output hex file
  * @return 0 on success, -1 on error
  */
-int dump_dma_rx_to_file(
-    const uint8_t* rx_buf,
-    size_t buffer_size_bytes,
-    const char* output_filename
-)
-{
+int dump_dma_rx_to_file(const uint8_t * rx_buf, size_t buffer_size_bytes, const char * output_filename) {
     return dump_buffer_to_file(rx_buf, buffer_size_bytes, output_filename);
 }
 
@@ -241,12 +225,7 @@ int dump_dma_rx_to_file(
  * - buffer is large enough for the data read.
  * - File contains int16_t values in binary format.
  */
-int fill_buffer_from_file(
-    uint8_t* buffer,
-    size_t buffer_size_bytes,
-    const char* filename
-)
-{
+int fill_buffer_from_file(uint8_t * buffer, size_t buffer_size_bytes, const char * filename) {
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
         printf("Failed to open file %s: %s\n", filename, strerror(errno));
@@ -254,7 +233,7 @@ int fill_buffer_from_file(
     }
 
     size_t bytes_to_read = buffer_size_bytes;
-    ssize_t bytes_read = read(fd, buffer, bytes_to_read);
+	ssize_t bytes_read   = read(fd, buffer, bytes_to_read);
     
     if (bytes_read < 0) {
         printf("Failed to read from file %s: %s\n", filename, strerror(errno));
@@ -263,8 +242,7 @@ int fill_buffer_from_file(
     }
 
     if (bytes_read < bytes_to_read) {
-        printf("File %s is smaller than buffer (%zd bytes vs %zd bytes requested)\n", 
-               filename, bytes_read, bytes_to_read);
+		printf("File %s is smaller than buffer (%zd bytes vs %zd bytes requested)\n", filename, bytes_read, bytes_to_read);
         // Optionally pad remaining buffer with zeros
         memset(buffer + bytes_read, 0, bytes_to_read - bytes_read);
     }
@@ -280,14 +258,8 @@ int fill_buffer_from_file(
  * - buffer_size is at least even (multiple of 2) in bytes.
  * - buffer is large enough for `(count) int16_t` values.
  */
-void fill_int16_buffer(
-    uint8_t* buffer,
-    size_t buffer_size_bytes,
-    int16_t start_cnt,
-    int16_t step = 1
-)
-{
-    int16_t* buf16 = reinterpret_cast<int16_t*>(buffer);
+void fill_int16_buffer(uint8_t * buffer, size_t buffer_size_bytes, int16_t start_cnt, int16_t step = 1) {
+	int16_t * buf16     = reinterpret_cast<int16_t *>(buffer);
     size_t max_elements = buffer_size_bytes / sizeof(int16_t);
 
     for (size_t i = 0; i < max_elements; ++i) {
@@ -295,7 +267,7 @@ void fill_int16_buffer(
     }
 }
 
-static int init_dma_tx (pl_dma &dma, std::vector<pl_dma::ch_config> tx_dma, uint32_t num_transfers){
+static int init_dma_tx(pl_dma & dma, std::vector<pl_dma::ch_config> tx_dma, uint32_t num_transfers) {
     if (dma.init(tx_dma) != 0) {
         printf("Init dma for ch0 failed\n");
         return 1;
@@ -305,9 +277,7 @@ static int init_dma_tx (pl_dma &dma, std::vector<pl_dma::ch_config> tx_dma, uint
 }
 
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char * argv[]) {
     if (argc < 5) {
         printf("usage: %s <test_point> <channel> <input_file> <output_file>\n", argv[0]);
         return 1;
@@ -329,68 +299,91 @@ int main(int argc, char *argv[])
     kbd->enableExitCapture(PIKbdListener::F10);
 
 
-    uint32_t test_point = (uint32_t)strtol(argv[1], NULL, 0);
-    uint32_t channel = (uint32_t)strtol(argv[2], NULL, 0);
-    const char* input_file = argv[3];
-    const char* output_file = argv[4];  // File to dump RX data (optional, can be empty string)
+	uint32_t test_point      = (uint32_t)strtol(argv[1], NULL, 0);
+	uint32_t channel         = (uint32_t)strtol(argv[2], NULL, 0);
+	const char * input_file  = argv[3];
+	const char * output_file = argv[4]; // File to dump RX data (optional, can be empty string)
     
     uint32_t buf_size = 4*1024;
     uint32_t num_transfers = 0;
 
+#ifdef AXI_MULTIPLIER
+	axi_multiplier_init();
+	axi_multiplier_set_mult(1, 0);
+	axi_multiplier_set_mult(2, 1);
+#else
     axi_dsp_init();
     axi_dsp_set_test_point(test_point);
     axi_dsp_set_channel(channel);
     axi_dsp_apply();
-
+#endif
 
     pl_dma dma_ch0;
     pl_dma dma_ch1, dma_ch2, dma_ch3, dma_ch4, dma_ch5, dma_ch6, dma_ch7;
 
 
-    std::vector<pl_dma::ch_config> tx_ch0 = {{
-        .devnode = TX_DEV_CH0,
+	std::vector<pl_dma::ch_config> tx_ch0 = {
+		{
+         .devnode     = TX_DEV_CH0,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> rx_ch0 = {{
-        .devnode = RX_DEV,
+	std::vector<pl_dma::ch_config> rx_ch0 = {
+		{
+         .devnode     = RX_DEV,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch1 = {{
-        .devnode = TX_DEV_CH1,
+	std::vector<pl_dma::ch_config> tx_ch1 = {
+		{
+         .devnode     = TX_DEV_CH1,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch2 = {{
-        .devnode = TX_DEV_CH2,
+	std::vector<pl_dma::ch_config> tx_ch2 = {
+		{
+         .devnode     = TX_DEV_CH2,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch3 = {{
-        .devnode = TX_DEV_CH3,
+	std::vector<pl_dma::ch_config> tx_ch3 = {
+		{
+         .devnode     = TX_DEV_CH3,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch4 = {{
-        .devnode = TX_DEV_CH4,
+	std::vector<pl_dma::ch_config> tx_ch4 = {
+		{
+         .devnode     = TX_DEV_CH4,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch5 = {{
-        .devnode = TX_DEV_CH5,
+	std::vector<pl_dma::ch_config> tx_ch5 = {
+		{
+         .devnode     = TX_DEV_CH5,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch6 = {{
-        .devnode = TX_DEV_CH6,
+	std::vector<pl_dma::ch_config> tx_ch6 = {
+		{
+         .devnode     = TX_DEV_CH6,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
-    std::vector<pl_dma::ch_config> tx_ch7 = {{
-        .devnode = TX_DEV_CH7,
+	std::vector<pl_dma::ch_config> tx_ch7 = {
+		{
+         .devnode     = TX_DEV_CH7,
         .buffer_size = buf_size,
-    }};
+		 }
+    };
 
     if (dma_ch0.init(tx_ch0, rx_ch0) != 0) {
         printf("Init dma for ch0 failed\n");
@@ -406,15 +399,15 @@ int main(int argc, char *argv[])
     init_dma_tx(dma_ch6, tx_ch6, num_transfers);
     init_dma_tx(dma_ch7, tx_ch7, num_transfers);
 
-    uint8_t *rx_buf =  (uint8_t *)dma_ch0.get_rx_buffer(0);
-    uint8_t *tx_buf0 = (uint8_t *)dma_ch0.get_tx_buffer(0);
-    uint8_t *tx_buf1 = (uint8_t *)dma_ch1.get_tx_buffer(0);
-    uint8_t *tx_buf2 = (uint8_t *)dma_ch2.get_tx_buffer(0);
-    uint8_t *tx_buf3 = (uint8_t *)dma_ch3.get_tx_buffer(0);
-    uint8_t *tx_buf4 = (uint8_t *)dma_ch4.get_tx_buffer(0);
-    uint8_t *tx_buf5 = (uint8_t *)dma_ch5.get_tx_buffer(0);
-    uint8_t *tx_buf6 = (uint8_t *)dma_ch6.get_tx_buffer(0);
-    uint8_t *tx_buf7 = (uint8_t *)dma_ch7.get_tx_buffer(0);
+	uint8_t * rx_buf         = (uint8_t *)dma_ch0.get_rx_buffer(0);
+	uint8_t * tx_buf0        = (uint8_t *)dma_ch0.get_tx_buffer(0);
+	uint8_t * tx_buf1        = (uint8_t *)dma_ch1.get_tx_buffer(0);
+	uint8_t * tx_buf2        = (uint8_t *)dma_ch2.get_tx_buffer(0);
+	uint8_t * tx_buf3        = (uint8_t *)dma_ch3.get_tx_buffer(0);
+	uint8_t * tx_buf4        = (uint8_t *)dma_ch4.get_tx_buffer(0);
+	uint8_t * tx_buf5        = (uint8_t *)dma_ch5.get_tx_buffer(0);
+	uint8_t * tx_buf6        = (uint8_t *)dma_ch6.get_tx_buffer(0);
+	uint8_t * tx_buf7        = (uint8_t *)dma_ch7.get_tx_buffer(0);
 
 
     // Fill tx_buf0 from file for the specified channel
@@ -475,8 +468,8 @@ int main(int argc, char *argv[])
 
     // Also dump to binary file for raw data
     {
-        const char* binary_output = "rx_dump_binary.bin";
-        FILE* bin_fp = fopen(binary_output, "wb");
+		const char * binary_output = "rx_dump_binary.bin";
+		FILE * bin_fp              = fopen(binary_output, "wb");
         if (bin_fp) {
             fwrite(rx_buf, 1, 4 * 1024, bin_fp);
             fclose(bin_fp);
@@ -493,7 +486,11 @@ int main(int argc, char *argv[])
     dma_ch6.cleanup();
     dma_ch7.cleanup();
 
+#ifdef AXI_MULTIPLIER
+	axi_multiplier_deinit();
+#else
     axi_dsp_deinit();
+#endif
     
     piDeleteSafety(kbd);
 

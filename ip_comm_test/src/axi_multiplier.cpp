@@ -4,6 +4,14 @@
 #include <unistd.h>
 #include "axi_multiplier.h"
 
+enum fd_err
+{
+   FD_ERR_NONE,
+   FD_ERR_WRITE,
+   FD_ERR_READ,
+   FD_ERR_NO_DEVICE,
+};
+
 enum regmap
 {
     REGMAP_IP_VER = 0x00,

@@ -142,28 +142,24 @@ int read_channel_from_file(const char * filename, int channel, uint8_t * buffer,
  * Dump int16 buffer to hex file.
  * Buffer contains interleaved re/im for a single channel: re0, im0, re1, im1, re2, im2, ...
  *
- * Output format: re0_im0 re1_im1 re2_im2 ... (64 hex chars = 16 int16 per line)
+ * Output format: re0_im0 (one pair per line, 8 hex chars)
  *
  * @param buffer Input buffer containing int16_t values (re/im interleaved)
  * @param buffer_size_bytes Size of buffer in bytes
  * @param output_filename Path to output hex file
  * @return 0 on success, -1 on error
  */
-int dump_buffer_to_file(const uint8_t * buffer, size_t buffer_size_bytes, const char * output_filename) {
+int dump_buffer_to_file(const void * buffer, size_t buffer_size_bytes, const char * output_filename) {
 	FILE * fp = fopen(output_filename, "w");
 	if (!fp) {
 		printf("Failed to open output file %s: %s\n", output_filename, strerror(errno));
 		return -1;
 	}
 
-	size_t num_int16            = buffer_size_bytes / sizeof(int16_t);
-	const int16_t * buf16       = reinterpret_cast<const int16_t *>(buffer);
+	size_t num_int16      = buffer_size_bytes / sizeof(int16_t);
+	const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
 
-	// Group into lines of 16 int16 values (8 re/im pairs = 64 hex chars)
-	const size_t int16_per_line = 16;
-	char line_buffer[256]; // 16 int16 * 4 hex chars = 64 chars, plus newline
-	size_t line_pos = 0;
-
+	// Write one re/im pair per line
 	for (size_t i = 0; i < num_int16; i += 2) {
 		if (i + 1 >= num_int16) break; // Need pairs
 
@@ -171,28 +167,7 @@ int dump_buffer_to_file(const uint8_t * buffer, size_t buffer_size_bytes, const 
 		int16_t im_val = buf16[i + 1];
 
 		// Convert to 4-char hex (uppercase, zero-padded)
-		char re_hex[5];
-		char im_hex[5];
-
-		snprintf(re_hex, 5, "%04X", (uint16_t)re_val);
-		snprintf(im_hex, 5, "%04X", (uint16_t)im_val);
-
-		// Add re_im to line buffer (8 hex chars per pair)
-		if (line_pos + 8 >= sizeof(line_buffer)) {
-			// Write line and reset
-			line_buffer[line_pos] = '\0';
-			fprintf(fp, "%s\n", line_buffer);
-			line_pos = 0;
-		}
-
-		snprintf(line_buffer + line_pos, 9, "%s%s", re_hex, im_hex);
-		line_pos += 8;
-	}
-
-	// Write final line if not empty
-	if (line_pos > 0) {
-		line_buffer[line_pos] = '\0';
-		fprintf(fp, "%s\n", line_buffer);
+		fprintf(fp, "%04X%04X\n", (uint16_t)re_val, (uint16_t)im_val);
 	}
 
 	fclose(fp);
@@ -203,17 +178,65 @@ int dump_buffer_to_file(const uint8_t * buffer, size_t buffer_size_bytes, const 
 	return 0;
 }
 
+/**
+ * Dump N bytes from each RX buffer to a hex file.
+ * Each buffer's data is written sequentially with a header indicating the buffer index.
+ *
+ * @param rx_buffers Array of pointers to RX buffers
+ * @param num_buffers Number of buffers in the array
+ * @param bytes_per_buffer Number of bytes to read from each buffer
+ * @param output_filename Path to output hex file
+ * @return 0 on success, -1 on error
+ */
+int dump_rx_buffers_to_file(void ** rx_buffers, size_t num_buffers, size_t bytes_per_buffer, const char * output_filename) {
+	FILE * fp = fopen(output_filename, "w");
+	if (!fp) {
+		printf("Failed to open output file %s: %s\n", output_filename, strerror(errno));
+		return -1;
+	}
+
+	size_t num_int16 = bytes_per_buffer / sizeof(int16_t);
+
+	for (size_t buf_idx = 0; buf_idx < num_buffers; buf_idx++) {
+		// if (!rx_buffers[buf_idx]) {
+		// 	fprintf(fp, "# Buffer %zu: NULL\n", buf_idx);
+		// 	continue;
+		// }
+
+		// fprintf(fp, "# Buffer %zu (address: %p)\n", buf_idx, rx_buffers[buf_idx]);
+
+		const int16_t * buf16 = reinterpret_cast<const int16_t *>(rx_buffers[buf_idx]);
+
+		// Write one re/im pair per line
+		for (size_t i = 0; i < num_int16; i += 2) {
+			if (i + 1 >= num_int16) break; // Need pairs
+
+			int16_t re_val = buf16[i];
+			int16_t im_val = buf16[i + 1];
+
+			fprintf(fp, "%04X%04X\n", (uint16_t)re_val, (uint16_t)im_val);
+		}
+
+		// fprintf(fp, "\n"); // Empty line between buffers
+	}
+
+	fclose(fp);
+
+	printf("Dumped %zu buffers (%zu bytes each) to %s\n", num_buffers, bytes_per_buffer, output_filename);
+	return 0;
+}
+
 
 /**
  * Dump RX buffer from DMA to hex file.
  * Reads the RX buffer and writes it as re/im pairs.
  *
- * @param rx_buf RX buffer from DMA (uint8_t*)
+ * @param rx_buf RX buffer from DMA
  * @param buffer_size_bytes Size of RX buffer in bytes
  * @param output_filename Path to output hex file
  * @return 0 on success, -1 on error
  */
-int dump_dma_rx_to_file(const uint8_t * rx_buf, size_t buffer_size_bytes, const char * output_filename) {
+int dump_dma_rx_to_file(const void * rx_buf, size_t buffer_size_bytes, const char * output_filename) {
 	return dump_buffer_to_file(rx_buf, buffer_size_bytes, output_filename);
 }
 
@@ -385,17 +408,26 @@ int main(int argc, char * argv[]) {
 	const char * input_file  = argv[3];
 	const char * output_file = argv[4]; // File to dump RX data (optional, can be empty string)
 
-    uint32_t buf_size = 4*1024;
-    uint32_t num_transfers = 0;
+	int buf_size             = BUFFER_SIZE;
+	uint32_t num_transfers   = 0;
 
 #ifdef AXI_MULTIPLIER
 	axi_multiplier_init();
 	axi_multiplier_set_mult(1, 0);
 	axi_multiplier_set_mult(2, 1);
+	axi_multiplier_set_mult(3, 2);
+	axi_multiplier_set_mult(4, 3);
+	axi_multiplier_set_mult(5, 4);
+	axi_multiplier_set_mult(6, 5);
+	axi_multiplier_set_mult(7, 6);
+	axi_multiplier_set_mult(8, 7);
 #else
 	axi_dsp_init();
-	axi_dsp_set_test_point(test_point);
-	axi_dsp_set_channel(channel);
+	// axi_dsp_set_test_point(test_point);
+	// axi_dsp_set_channel(channel);
+	axi_dsp_set_output_source(test_point, channel);
+	auto v = axi_dsp_get_output_source();
+	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";
 	axi_dsp_apply();
 #endif
 
@@ -480,7 +512,13 @@ int main(int argc, char * argv[]) {
 	init_dma_tx(dma_ch6, tx_ch6, num_transfers);
 	init_dma_tx(dma_ch7, tx_ch7, num_transfers);
 
-	uint8_t * rx_buf         = (uint8_t *)dma_ch0.get_rx_buffer(0);
+	void * rx_buffers[RX_BUFFER_COUNT];
+	dma_ch0.get_all_rx_buffers(rx_buffers);
+
+	piCout << "Rx buffers adresses are:";
+	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
+		piCout << "num " << i << " " << PICoutManipulators::PICoutFormat::Hex << rx_buffers[i];
+	}
 	uint8_t * tx_buf0        = (uint8_t *)dma_ch0.get_tx_buffer(0);
 	uint8_t * tx_buf1        = (uint8_t *)dma_ch1.get_tx_buffer(0);
 	uint8_t * tx_buf2        = (uint8_t *)dma_ch2.get_tx_buffer(0);
@@ -492,6 +530,10 @@ int main(int argc, char * argv[]) {
 
 
 	uint8_t * all_buffers[8] = {tx_buf0, tx_buf1, tx_buf2, tx_buf3, tx_buf4, tx_buf5, tx_buf6, tx_buf7};
+	piCout << "Buffer adresses are:";
+	for (size_t i = 0; i < 8; i++) {
+		piCout << "ch" << i << " " << PICoutManipulators::PICoutFormat::Hex << all_buffers[i];
+	}
 
 	if (read_all_channels_from_file(input_file, all_buffers, buf_size) != 0) {
 		printf("Failed to read channels from file\n");
@@ -533,20 +575,27 @@ int main(int argc, char * argv[]) {
 
 	// Dump RX buffer to hex file (only re/im pairs for one channel)
 	if (output_file && strlen(output_file) > 0) {
-		if (dump_dma_rx_to_file(rx_buf, 4 * 1024, output_file) != 0) {
+		// Print memory addresses and sizes for debugging
+		printf("rx_buffers[0] = %p\n", rx_buffers[0]);
+		printf("rx_buffers[1] = %p\n", rx_buffers[1]);
+		printf("Difference = %td bytes\n", (char *)rx_buffers[1] - (char *)rx_buffers[0]);
+		printf("BUFFER_SIZE = %ld\n", BUFFER_SIZE);
+		printf("BUFFER_SIZE + 64 = %ld\n", BUFFER_SIZE + 64);
+		printf("Total size to dump = %zu bytes\n", (size_t)(BUFFER_SIZE + 64) * RX_BUFFER_COUNT);
+
+
+		
+		if (dump_dma_rx_to_file(rx_buffers[0], (BUFFER_SIZE + 64) * RX_BUFFER_COUNT, "dump_all.hex") != 0) {
 			printf("Failed to dump RX buffer to file\n");
 			return 1;
 		}
-	}
 
-	// Also dump to binary file for raw data
-	{
-		const char * binary_output = "rx_dump_binary.bin";
-		FILE * bin_fp              = fopen(binary_output, "wb");
-		if (bin_fp) {
-			fwrite(rx_buf, 1, 4 * 1024, bin_fp);
-			fclose(bin_fp);
-			printf("Dumped RX buffer to binary file: %s\n", binary_output);
+		if (output_file && strlen(output_file) > 0) {
+			// Dump all buffers with N bytes each
+			if (dump_rx_buffers_to_file(rx_buffers, RX_BUFFER_COUNT, 232*4, output_file) != 0) {
+				printf("Failed to dump RX buffers to file\n");
+				return 1;
+			}
 		}
 	}
 

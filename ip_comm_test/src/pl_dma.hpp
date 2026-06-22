@@ -34,12 +34,12 @@ private:
 	std::vector<channel> m_tx_ch;
 	std::vector<channel> m_rx_ch;
 
-	uint64_t m_start_time = 0;
-	uint64_t m_end_time   = 0;
+	uint64_t m_start_time  = 0;
+	uint64_t m_end_time    = 0;
 
-	int init_num_transfers     = 0;
-	int num_transfers     = 0;
-	bool stop_in_progress = false;
+	int init_num_transfers = 0;
+	int num_transfers      = 0;
+	bool stop_in_progress  = false;
 
 	int setup_threads();
 	void cleanup_channels();
@@ -85,10 +85,26 @@ public:
 		return &m_tx_ch[0].buf_ptr[num].buffer;
 	}
 
+
+	void get_all_tx_buffers(void ** buffer_array) const {
+		size_t count = m_tx_ch.size();
+		for (size_t i = 0; i < count; ++i) {
+			buffer_array[i] = &m_tx_ch[0].buf_ptr[i].buffer;
+		}
+	}
+
 	void * get_rx_buffer(size_t num) const {
 		if (!m_rx_ch.size()) return nullptr;
 		return &m_rx_ch[0].buf_ptr[num].buffer;
 	}
+
+	void get_all_rx_buffers(void ** buffer_array) const {
+		size_t count = m_rx_ch.size();
+		for (size_t i = 0; i < RX_BUFFER_COUNT; ++i) {
+			buffer_array[i] = &m_rx_ch[0].buf_ptr[i].buffer;
+		}
+	}
+
 	size_t get_rx_buffer_size() const {
 		if (m_rx_ch.size()) return m_rx_ch[0].buffer_size;
 		return 0;

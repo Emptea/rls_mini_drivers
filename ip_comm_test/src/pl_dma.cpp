@@ -120,6 +120,7 @@ void pl_dma::transmit() {
 	while (true) {
 		if (in_progress_count) {
 			ioctl(channel_ptr->fd, FINISH_XFER, &buffer_id);
+			
 			if (channel_ptr->buf_ptr[buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
 				printf("Proxy tx transfer error, # transfers %d, # completed %d, # in progress %d\n",
 				       num_transfers,
@@ -154,7 +155,7 @@ void pl_dma::transmit() {
 			 */
 			ioctl(channel_ptr->fd, START_XFER, &buffer_id);
 			in_progress_count++;
-			if (stop_in_progress) printf("Tx counter + in progress: %d, num_transfers %d\n", counter + in_progress_count, num_transfers);
+			// if (stop_in_progress) printf("Tx counter + in progress: %d, num_transfers %d\n", counter + in_progress_count, num_transfers);
 		}
 		buffer_id = (buffer_id + 1) % TX_BUFFER_COUNT;
 	}
@@ -209,7 +210,7 @@ void pl_dma::receive() {
 		if (!stop_in_progress || ((counter + in_progress_count) < num_transfers)) {
 			ioctl(channel_ptr->fd, START_XFER, &buffer_id);
 			in_progress_count++;
-			if (stop_in_progress) printf("Rx counter + in progress: %d, num_transfers %d\n", counter + in_progress_count, num_transfers);
+			// if (stop_in_progress) printf("Rx counter + in progress: %d, num_transfers %d\n", counter + in_progress_count, num_transfers);
 		}
 
 

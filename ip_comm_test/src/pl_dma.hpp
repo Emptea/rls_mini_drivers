@@ -4,9 +4,14 @@
 
 #include <cstdint>
 #include <piprotectedvariable.h>
+#include <pisemaphore.h>
 #include <pithread.h>
 #include <string>
 #include <vector>
+
+#define N_SAMPS_IN_TX_BUF 232
+#define N_PACKS_IN_TX_BUF 4
+extern PISemaphore sem;
 
 class pl_dma: public PIObject {
 	PIOBJECT(pl_dma)
@@ -20,10 +25,12 @@ private:
 		channel_buffer * buf_ptr = nullptr; // proxy‑driver ring
 		int fd                   = -1;
 		int buffer_size          = 0;
-		int num_transfers        = 0;
 		uint8_t * user_buffer    = nullptr;
 		pthread_t tid            = 0;
 		int stop;
+		int counter = 0;
+		int buffer_id = 0;
+		int in_progress_count = 0;
 	};
 
 	struct {
@@ -31,14 +38,16 @@ private:
 		int tx_errs = 0;
 	} errors_cnt;
 
+	std::string rx_filename;
+
 	std::vector<channel> m_tx_ch;
 	std::vector<channel> m_rx_ch;
 
 	uint64_t m_start_time  = 0;
 	uint64_t m_end_time    = 0;
 
-	int init_num_transfers = 0;
-	int num_transfers      = 0;
+	int num_transfers_tx = 0;
+	int num_transfers_rx      = 0;
 	bool stop_in_progress  = false;
 
 	int setup_threads();
@@ -79,6 +88,9 @@ public:
 	Stats get_stats() const;
 	void cleanup();
 
+	void set_rx_filename(std::string f_name){
+		rx_filename = f_name;
+	}
 
 	void * get_tx_buffer(size_t num) const {
 		if (!m_tx_ch.size()) return nullptr;
@@ -127,5 +139,8 @@ public:
 		}
 	}
 
-	void set_num_transfers(int n_trans) { num_transfers = n_trans; }
+	void set_num_transfers(int n_trans) { 
+		num_transfers_tx = n_trans; 
+		num_transfers_rx = n_trans * N_PACKS_IN_TX_BUF; 
+	}
 };

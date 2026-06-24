@@ -39,105 +39,6 @@ static int16_t hex_to_int16(const char * hex_str) {
 	return (int16_t)val;
 }
 
-
-/**
- * Read a hex file with format: ch0_re ch0_im ch1_re ch1_im ... ch7_re ch7_im
- * Each value is 4 hex chars (16 bits).
- *
- * Extracts data for the given channel and fills buffer with:
- * re0_chN, im0_chN, re1_chN, im1_chN, re2_chN, im2_chN, ...
- *
- * @param filename Path to the hex file
- * @param channel Channel number (0-7)
- * @param buffer Output buffer (uint8_t*) to fill with int16_t values
- * @param buffer_size_bytes Size of buffer in bytes
- * @return 0 on success, -1 on error
- */
-int read_channel_from_file(const char * filename, int channel, uint8_t * buffer, size_t buffer_size_bytes) {
-	if (channel < 0 || channel > 7) {
-		printf("Invalid channel: %d (must be 0-7)\n", channel);
-		return -1;
-	}
-
-	FILE * fp = fopen(filename, "r");
-	if (!fp) {
-		printf("Failed to open file %s: %s\n", filename, strerror(errno));
-		return -1;
-	}
-
-	// Each sample has 8 channels * 4 hex chars = 32 hex chars per sample block
-	// Channel offset within each block: channel * 2 (each channel has re + im = 2 values)
-	int channel_offset        = channel * 2; // 0, 2, 4, 6, 8, 10, 12, 14
-
-	size_t max_int16_elements = buffer_size_bytes / sizeof(int16_t);
-	size_t int16_count        = 0;
-
-	char line[256];
-	size_t samples_read = 0;
-
-	while (int16_count < max_int16_elements && fgets(line, sizeof(line), fp)) {
-		// Remove whitespace/newlines
-		char clean_line[256];
-		size_t j = 0;
-		for (size_t i = 0; i < strlen(line) && j < sizeof(clean_line) - 1; i++) {
-			if (line[i] != ' ' && line[i] != '\n' && line[i] != '\r' && line[i] != '\t') {
-				clean_line[j++] = line[i];
-			}
-		}
-		clean_line[j] = '\0';
-
-		if (j == 0) continue; // Empty line
-
-		// Each sample block is 8 channels * 4 chars each = 32 hex chars
-		// But the file might have multiple samples per line
-		size_t line_len = strlen(clean_line);
-
-		for (size_t pos = 0; pos + 32 <= line_len; pos += 32) {
-			// Extract real and imaginary for the target channel
-			// Real is at offset: channel_offset * 4
-			// Imag is at offset: (channel_offset + 1) * 4
-			int re_offset = channel_offset * 4;
-			int im_offset = (channel_offset + 1) * 4;
-
-			char re_hex[5];
-			char im_hex[5];
-
-			memcpy(re_hex, clean_line + pos + re_offset, 4);
-			memcpy(im_hex, clean_line + pos + im_offset, 4);
-			re_hex[4]      = '\0';
-			im_hex[4]      = '\0';
-
-			int16_t re_val = hex_to_int16(re_hex);
-			int16_t im_val = hex_to_int16(im_hex);
-
-			// Fill buffer: re, im, re, im, ...
-			if (int16_count + 2 <= max_int16_elements) {
-				int16_t * buf16      = reinterpret_cast<int16_t *>(buffer);
-				buf16[int16_count++] = re_val;
-				buf16[int16_count++] = im_val;
-			}
-		}
-		samples_read++;
-	}
-
-	fclose(fp);
-
-	if (int16_count == 0) {
-		printf("No data found for channel %d in file %s\n", channel, filename);
-		return -1;
-	}
-
-	// Pad remaining buffer with zeros if file was smaller than buffer
-	int16_t * buf16 = reinterpret_cast<int16_t *>(buffer);
-	for (size_t i = int16_count; i < max_int16_elements; i++) {
-		buf16[i] = 0;
-	}
-
-	printf("Loaded %zu int16 values (%zu real+imag pairs) for channel %d from %s\n", int16_count, int16_count / 2, channel, filename);
-
-	return 0;
-}
-
 /**
  * Dump int16 buffer to hex file.
  * Buffer contains interleaved re/im for a single channel: re0, im0, re1, im1, re2, im2, ...
@@ -241,42 +142,7 @@ int dump_dma_rx_to_file(const void * rx_buf, size_t buffer_size_bytes, const cha
 }
 
 /**
- * Fill a uint8_t buffer from a file containing int16_t values.
- *
- * Assumptions:
- * - buffer_size is large enough for the file data (or file is truncated to buffer size).
- * - buffer is large enough for the data read.
- * - File contains int16_t values in binary format.
- */
-int fill_buffer_from_file(uint8_t * buffer, size_t buffer_size_bytes, const char * filename) {
-	int fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		printf("Failed to open file %s: %s\n", filename, strerror(errno));
-		return -1;
-	}
-
-	size_t bytes_to_read = buffer_size_bytes;
-	ssize_t bytes_read   = read(fd, buffer, bytes_to_read);
-
-	if (bytes_read < 0) {
-		printf("Failed to read from file %s: %s\n", filename, strerror(errno));
-		close(fd);
-		return -1;
-	}
-
-	if (bytes_read < bytes_to_read) {
-		printf("File %s is smaller than buffer (%zd bytes vs %zd bytes requested)\n", filename, bytes_read, bytes_to_read);
-		// Optionally pad remaining buffer with zeros
-		memset(buffer + bytes_read, 0, bytes_to_read - bytes_read);
-	}
-
-	close(fd);
-	printf("Successfully loaded %zd bytes from %s into buffer\n", bytes_read, filename);
-	return 0;
-}
-
-/**
- * Read a hex file once and extract data for all 8 channels.
+ * Read a hex file once and extract data for all 8 channels, starting from a specific offset.
  * File format: ch0_re ch0_im ch1_re ch1_im ... ch7_re ch7_im
  * Each value is 4 hex chars (16‑bit signed).
  *
@@ -430,10 +296,9 @@ int main(int argc, char * argv[]) {
 	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";
 	axi_dsp_apply();
 #endif
-
 	pl_dma dma_ch0;
 	pl_dma dma_ch1, dma_ch2, dma_ch3, dma_ch4, dma_ch5, dma_ch6, dma_ch7;
-
+	dma_ch0.set_rx_filename(output_file);
 
 	std::vector<pl_dma::ch_config> tx_ch0 = {
 		{
@@ -571,33 +436,31 @@ int main(int argc, char * argv[]) {
 	dma_ch7.stop();
 
 	auto stats = dma_ch0.get_stats();
-	printf("Throughput: %d MB/s\n", stats.mb_per_sec);
 
 	// Dump RX buffer to hex file (only re/im pairs for one channel)
-	if (output_file && strlen(output_file) > 0) {
-		// Print memory addresses and sizes for debugging
-		printf("rx_buffers[0] = %p\n", rx_buffers[0]);
-		printf("rx_buffers[1] = %p\n", rx_buffers[1]);
-		printf("Difference = %td bytes\n", (char *)rx_buffers[1] - (char *)rx_buffers[0]);
-		printf("BUFFER_SIZE = %ld\n", BUFFER_SIZE);
-		printf("BUFFER_SIZE + 64 = %ld\n", BUFFER_SIZE + 64);
-		printf("Total size to dump = %zu bytes\n", (size_t)(BUFFER_SIZE + 64) * RX_BUFFER_COUNT);
+	// if (output_file && strlen(output_file) > 0) {
+	// 	// Print memory addresses and sizes for debugging
+	// 	printf("rx_buffers[0] = %p\n", rx_buffers[0]);
+	// 	printf("rx_buffers[1] = %p\n", rx_buffers[1]);
+	// 	printf("Difference = %td bytes\n", (char *)rx_buffers[1] - (char *)rx_buffers[0]);
+	// 	printf("BUFFER_SIZE = %ld\n", BUFFER_SIZE);
+	// 	printf("BUFFER_SIZE + 64 = %ld\n", BUFFER_SIZE + 64);
+	// 	printf("Total size to dump = %zu bytes\n", (size_t)(BUFFER_SIZE + 64) * RX_BUFFER_COUNT);
 
 
-		
-		if (dump_dma_rx_to_file(rx_buffers[0], (BUFFER_SIZE + 64) * RX_BUFFER_COUNT, "dump_all.hex") != 0) {
-			printf("Failed to dump RX buffer to file\n");
-			return 1;
-		}
+	// 	if (dump_dma_rx_to_file(rx_buffers[0], (BUFFER_SIZE + 64) * RX_BUFFER_COUNT, "dump_all.hex") != 0) {
+	// 		printf("Failed to dump RX buffer to file\n");
+	// 		return 1;
+	// 	}
 
-		if (output_file && strlen(output_file) > 0) {
-			// Dump all buffers with N bytes each
-			if (dump_rx_buffers_to_file(rx_buffers, RX_BUFFER_COUNT, 232*4, output_file) != 0) {
-				printf("Failed to dump RX buffers to file\n");
-				return 1;
-			}
-		}
-	}
+	// 	if (output_file && strlen(output_file) > 0) {
+	// 		// Dump all buffers with N bytes each
+	// 		if (dump_rx_buffers_to_file(rx_buffers, RX_BUFFER_COUNT, 232*4, output_file) != 0) {
+	// 			printf("Failed to dump RX buffers to file\n");
+	// 			return 1;
+	// 		}
+	// 	}
+	// }
 
 	dma_ch0.cleanup();
 	dma_ch1.cleanup();

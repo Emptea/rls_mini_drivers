@@ -433,6 +433,7 @@ int main(int argc, char * argv[]) {
 
 	pl_dma dma_ch0;
 	pl_dma dma_ch1, dma_ch2, dma_ch3, dma_ch4, dma_ch5, dma_ch6, dma_ch7;
+	dma_ch0.set_rx_filename(output_file);
 
 
 	std::vector<pl_dma::ch_config> tx_ch0 = {
@@ -573,31 +574,31 @@ int main(int argc, char * argv[]) {
 	auto stats = dma_ch0.get_stats();
 	printf("Throughput: %d MB/s\n", stats.mb_per_sec);
 
-	// Dump RX buffer to hex file (only re/im pairs for one channel)
-	if (output_file && strlen(output_file) > 0) {
-		// Print memory addresses and sizes for debugging
-		printf("rx_buffers[0] = %p\n", rx_buffers[0]);
-		printf("rx_buffers[1] = %p\n", rx_buffers[1]);
-		printf("Difference = %td bytes\n", (char *)rx_buffers[1] - (char *)rx_buffers[0]);
-		printf("BUFFER_SIZE = %ld\n", BUFFER_SIZE);
-		printf("BUFFER_SIZE + 64 = %ld\n", BUFFER_SIZE + 64);
-		printf("Total size to dump = %zu bytes\n", (size_t)(BUFFER_SIZE + 64) * RX_BUFFER_COUNT);
+	// // Dump RX buffer to hex file (only re/im pairs for one channel)
+	// if (output_file && strlen(output_file) > 0) {
+	// 	// Print memory addresses and sizes for debugging
+	// 	printf("rx_buffers[0] = %p\n", rx_buffers[0]);
+	// 	printf("rx_buffers[1] = %p\n", rx_buffers[1]);
+	// 	printf("Difference = %td bytes\n", (char *)rx_buffers[1] - (char *)rx_buffers[0]);
+	// 	printf("BUFFER_SIZE = %ld\n", BUFFER_SIZE);
+	// 	printf("BUFFER_SIZE + 64 = %ld\n", BUFFER_SIZE + 64);
+	// 	printf("Total size to dump = %zu bytes\n", (size_t)(BUFFER_SIZE + 64) * RX_BUFFER_COUNT);
 
 
 		
-		if (dump_dma_rx_to_file(rx_buffers[0], (BUFFER_SIZE + 64) * RX_BUFFER_COUNT, "dump_all.hex") != 0) {
-			printf("Failed to dump RX buffer to file\n");
-			return 1;
-		}
+	// 	if (dump_dma_rx_to_file(rx_buffers[0], (BUFFER_SIZE + 64) * RX_BUFFER_COUNT, "dump_all.hex") != 0) {
+	// 		printf("Failed to dump RX buffer to file\n");
+	// 		return 1;
+	// 	}
 
-		if (output_file && strlen(output_file) > 0) {
-			// Dump all buffers with N bytes each
-			if (dump_rx_buffers_to_file(rx_buffers, RX_BUFFER_COUNT, 232*4, output_file) != 0) {
-				printf("Failed to dump RX buffers to file\n");
-				return 1;
-			}
-		}
-	}
+	// 	if (output_file && strlen(output_file) > 0) {
+	// 		// Dump all buffers with N bytes each
+	// 		if (dump_rx_buffers_to_file(rx_buffers, RX_BUFFER_COUNT, 232*4, output_file) != 0) {
+	// 			printf("Failed to dump RX buffers to file\n");
+	// 			return 1;
+	// 		}
+	// 	}
+	// }
 
 	dma_ch0.cleanup();
 	dma_ch1.cleanup();

@@ -106,6 +106,7 @@ int main(int argc, char * argv[]) {
 		}
 	}
 
+	dma_channels[0]->start();
 	int buff_id = 0;
 	for (size_t i = 0; i < num_transfers; i++) {
 		uint8_t * current_buffers[TX_BUFFER_COUNT];
@@ -113,15 +114,16 @@ int main(int argc, char * argv[]) {
 			current_buffers[k] = (uint8_t *)tx_buffers[k][buff_id];
 		}
 		misc_read_8chs_from_file(input_file, current_buffers, buf_size);
-		for (int k = dma_channels.size() - 1; k >= 0; k--) {
+		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->start_transfer();
 		}
 		10_ms .sleep();
-		for (int k = dma_channels.size() - 1; k >= 0; k--) {
+		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->wait_for_transfer();
 		}
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
 	}
+	dma_channels[0]->waitForFinish();
 
 	WAIT_FOR_EXIT;
 

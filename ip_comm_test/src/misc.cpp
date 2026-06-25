@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <cstdio>
+#include <errno.h>
+#include <string.h>
 
 #include <atomic>
 #include <thread>
@@ -39,6 +41,7 @@ int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t
 		printf("Failed to open file %s: %s\n", filename, strerror(errno));
 		return -1;
 	}
+
 
 	size_t max_int16_elements = buffer_size_bytes / sizeof(int16_t);
 	size_t max_samples        = max_int16_elements / 2; // each sample = re+im pair per channel

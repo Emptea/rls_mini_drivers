@@ -33,75 +33,86 @@ static int16_t hex_to_int16(const char * hex_str) {
  * @param filename        Path to the hex file
  * @param buffers[8]      Array of 8 output buffers (uint8_t*), each holds int16_t data
  * @param buffer_size_bytes  Size of each buffer in bytes (must be same for all)
+ * @param offset_samples  Number of samples to skip from the beginning of the file
  * @return 0 on success, -1 on error
  */
-int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t buffer_size_bytes) {
-	FILE * fp = fopen(filename, "r");
-	if (!fp) {
-		printf("Failed to open file %s: %s\n", filename, strerror(errno));
-		return -1;
-	}
+int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t buffer_size_bytes, size_t sample_offset) {
+    FILE * fp = fopen(filename, "r");
+    if (!fp) {
+        printf("Failed to open file %s: %s\n", filename, strerror(errno));
+        return -1;
+    }
 
+    size_t max_int16_elements = buffer_size_bytes / sizeof(int16_t);
+    size_t max_samples        = max_int16_elements / 2; // each sample = re+im pair per channel
 
-	size_t max_int16_elements = buffer_size_bytes / sizeof(int16_t);
-	size_t max_samples        = max_int16_elements / 2; // each sample = re+im pair per channel
+    int16_t * buf16[8];
+    for (int ch = 0; ch < 8; ch++) {
+        buf16[ch] = (int16_t *)buffers[ch];
+    }
 
-	int16_t * buf16[8];
-	for (int ch = 0; ch < 8; ch++) {
-		buf16[ch] = (int16_t *)buffers[ch];
-	}
+    size_t sample_count = 0;
+    size_t samples_skipped = 0;
+    char line[256];
 
-	size_t sample_count = 0;
-	char line[256];
+    while (sample_count < max_samples && fgets(line, sizeof(line), fp)) {
+        // Remove whitespace and newlines
+        char clean[256];
+        size_t j = 0;
+        for (size_t i = 0; i < strlen(line) && j < sizeof(clean) - 1; i++) {
+            if (line[i] != ' ' && line[i] != '\n' && line[i] != '\r' && line[i] != '\t') {
+                clean[j++] = line[i];
+            }
+        }
+        clean[j] = '\0';
+        if (j == 0) continue; // skip empty lines
 
-	while (sample_count < max_samples && fgets(line, sizeof(line), fp)) {
-		// Remove whitespace and newlines
-		char clean[256];
-		size_t j = 0;
-		for (size_t i = 0; i < strlen(line) && j < sizeof(clean) - 1; i++) {
-			if (line[i] != ' ' && line[i] != '\n' && line[i] != '\r' && line[i] != '\t') {
-				clean[j++] = line[i];
-			}
-		}
-		clean[j] = '\0';
-		if (j == 0) continue; // skip empty lines
+        size_t line_len = strlen(clean);
+        // Each sample block is 8 channels * (re+im) * 4 hex chars = 64 hex chars
+        for (size_t pos = 0; pos + 64 <= line_len && sample_count < max_samples; pos += 64) {
+            // Skip samples based on offset
+            if (samples_skipped < sample_offset) {
+                samples_skipped++;
+                continue;
+            }
+            
+            // Extract all 8 channels from this sample block
+            for (int ch = 0; ch < 8; ch++) {
+                int re_offset = (ch * 2) * 4; // channel * 2 values * 4 chars
+                int im_offset = (ch * 2 + 1) * 4;
 
-		size_t line_len = strlen(clean);
-		// Each sample block is 8 channels * (re+im) * 4 hex chars = 64 hex chars
-		for (size_t pos = 0; pos + 64 <= line_len && sample_count < max_samples; pos += 64) {
-			// Extract all 8 channels from this sample block
-			for (int ch = 0; ch < 8; ch++) {
-				int re_offset = (ch * 2) * 4; // channel * 2 values * 4 chars
-				int im_offset = (ch * 2 + 1) * 4;
+                char re_hex[5], im_hex[5];
+                memcpy(re_hex, clean + pos + re_offset, 4);
+                memcpy(im_hex, clean + pos + im_offset, 4);
 
-				char re_hex[5], im_hex[5];
-				memcpy(re_hex, clean + pos + re_offset, 4);
-				memcpy(im_hex, clean + pos + im_offset, 4);
-				re_hex[4]                       = '\0';
-				im_hex[4]                       = '\0';
+				// if ((ch == 1) && sample_count < 10){
+				// 	printf("Sample for ch %d, count %ld, is re = %s, im = %s\n", ch, sample_count, re_hex, im_hex);
+				// }
+                re_hex[4] = '\0';
+                im_hex[4] = '\0';
 
-				int16_t re_val                  = (int16_t)strtoul(re_hex, NULL, 16);
-				int16_t im_val                  = (int16_t)strtoul(im_hex, NULL, 16);
+                int16_t re_val = (int16_t)strtoul(re_hex, NULL, 16);
+                int16_t im_val = (int16_t)strtoul(im_hex, NULL, 16);
 
-				// Store re, im consecutively
-				buf16[ch][sample_count * 2]     = re_val;
-				buf16[ch][sample_count * 2 + 1] = im_val;
-			}
-			sample_count++;
-		}
-	}
+                // Store re, im consecutively
+                buf16[ch][sample_count * 2] = re_val;
+                buf16[ch][sample_count * 2 + 1] = im_val;
+            }
+            sample_count++;
+        }
+    }
 
-	fclose(fp);
+    fclose(fp);
 
-	// Pad remaining space in each buffer with zeros (if file was shorter)
-	for (int ch = 0; ch < 8; ch++) {
-		for (size_t i = sample_count * 2; i < max_int16_elements; i++) {
-			buf16[ch][i] = 0;
-		}
-	}
+    // Pad remaining space in each buffer with zeros (if file was shorter)
+    for (int ch = 0; ch < 8; ch++) {
+        for (size_t i = sample_count * 2; i < max_int16_elements; i++) {
+            buf16[ch][i] = 0;
+        }
+    }
 
-	printf("Loaded %zu samples (all channels) from %s\n", sample_count, filename);
-	return 0;
+    printf("Loaded %zu samples (skipped %zu) from %s\n", sample_count, samples_skipped, filename);
+    return 0;
 }
 
 std::string misc_get_date()

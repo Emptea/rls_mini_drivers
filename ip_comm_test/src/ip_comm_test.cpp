@@ -65,7 +65,7 @@ int main(int argc, char * argv[]) {
 	axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;
-	uint32_t num_transfers   = 1;
+	uint32_t num_transfers   = 16;
 	uint32_t n_samps_per_buf = 232;
 
 	PIVector<dma_channel *> dma_channels;
@@ -106,18 +106,20 @@ int main(int argc, char * argv[]) {
 		}
 	}
 
-	dma_channels[0]->start();
+	dma_channels[0]->start(45_us);
 	int buff_id = 0;
 	for (size_t i = 0; i < num_transfers; i++) {
 		uint8_t * current_buffers[TX_BUFFER_COUNT];
 		for (size_t k = 0; k < NUM_CHANNELS_TX; k++) {
+			dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
 			current_buffers[k] = (uint8_t *)tx_buffers[k][buff_id];
 		}
-		misc_read_8chs_from_file(input_file, current_buffers, buf_size);
+		size_t offset = i * n_samps_per_buf * N_PACKS_IN_TX_BUF;
+		misc_read_8chs_from_file(input_file, current_buffers, buf_size, offset);
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->start_transfer();
 		}
-		10_ms .sleep();
+		180_us .sleep();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->wait_for_transfer();
 		}

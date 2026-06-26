@@ -69,7 +69,7 @@ public:
 		}
 
 		if (num_transfers && ((ch.counter + ch.in_progress_count) < num_transfers)) {
-			start_transfer();
+			start_transfer_for_buf(ch.buffer_id);
 			piCout << "Started transfer for buffer " << ch.buffer_id << "global cnt is " << ch.buffer_count;
 		}
 		ch.buffer_id = (ch.buffer_id + 1) % ch.buffer_count;

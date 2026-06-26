@@ -107,23 +107,20 @@ void pl_dma::transmit() {
 
 	// int counter = 0, buffer_id, in_progress_count = 0;
 
-	// buffer_id = 0;
-	while (true) {
-		// sem.acquire(); // ждать задачу
-		if (!channel_ptr->stop || ((channel_ptr->counter + channel_ptr->in_progress_count) < num_transfers_tx)) {
-			/* Restart the completed channel buffer to start another transfer and keep
-			 * track of the number of transfers in progress
-			 */
-			ioctl(channel_ptr->fd, START_XFER, &channel_ptr->buffer_id);
-			channel_ptr->in_progress_count++;
-			// if (stop_in_progress) printf("Tx counter + in progress: %d, num_transfers_tx %d\n", counter + in_progress_count,
-			// num_transfers_tx);
-		}
-		channel_ptr->buffer_id = (channel_ptr->buffer_id + 1) % TX_BUFFER_COUNT;
+	for (channel_ptr->buffer_id = 0; channel_ptr->buffer_id < TX_BUFFER_COUNT; ++channel_ptr->buffer_id) {
+		channel_ptr->buf_ptr[channel_ptr->buffer_id].length = channel_ptr->buffer_size;
 
+		ioctl(channel_ptr->fd, START_XFER, &channel_ptr->buffer_id);
+		printf("Start transfer for tx buffer %d\n", channel_ptr->buffer_id);
+		channel_ptr->in_progress_count++;
+		// if (++in_progress_count >= num_transfers_tx) break;
+	}
+
+	channel_ptr->buffer_id = 0;
+	while (true) {
 		if (channel_ptr->in_progress_count) {
 			ioctl(channel_ptr->fd, FINISH_XFER, &channel_ptr->buffer_id);
-			
+
 			if (channel_ptr->buf_ptr[channel_ptr->buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
 				printf("Proxy tx transfer error, # transfers %d, # completed %d, # in progress %d\n",
 				       num_transfers_tx,
@@ -150,8 +147,19 @@ void pl_dma::transmit() {
 			stop_in_progress = true;
 			num_transfers_tx = channel_ptr->counter + RX_BUFFER_COUNT;
 			num_transfers_rx = (channel_ptr->counter + RX_BUFFER_COUNT) * N_PACKS_IN_TX_BUF;
-			printf("Stop in progress, num_transfers = %d\n", num_transfers_tx);
+			printf("Stop in progress, num_transfers_tx = %d\n", num_transfers_tx);
 		}
+
+		if (!channel_ptr->stop || ((channel_ptr->counter + channel_ptr->in_progress_count) < num_transfers_tx)) {
+			/* Restart the completed channel buffer to start another transfer and keep
+			 * track of the number of transfers in progress
+			 */
+			ioctl(channel_ptr->fd, START_XFER, &channel_ptr->buffer_id);
+			channel_ptr->in_progress_count++;
+			// if (stop_in_progress) printf("Tx counter + in progress: %d, num_transfers %d\n", channel_ptr->counter +
+			// channel_ptr->in_progress_count, num_transfers_tx);
+		}
+		channel_ptr->buffer_id = (channel_ptr->buffer_id + 1) % TX_BUFFER_COUNT;
 	}
 	printf("Proxy tx transfer stopped for devnode %s, # transfers %d, # completed %d, # in progress %d\n",
 	       config.devnode.c_str(),

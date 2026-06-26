@@ -11,7 +11,6 @@
 
 #define N_SAMPS_IN_TX_BUF 232
 #define N_PACKS_IN_TX_BUF 4
-extern PISemaphore sem;
 
 class pl_dma: public PIObject {
 	PIOBJECT(pl_dma)

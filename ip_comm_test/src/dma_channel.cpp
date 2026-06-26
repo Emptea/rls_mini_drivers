@@ -9,12 +9,12 @@
 void dma_channel::save_buf_to_file(void * buffer, int N) {
 	piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
 	const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
-    if (dump_file == nullptr) {
-        piCout << "ERROR: dump_file is NULL, cannot save";
-        return;
-    }
+	if (dump_file == nullptr) {
+		piCout << "ERROR: dump_file is NULL, cannot save";
+		return;
+	}
 
-	size_t num_int16      = N * 2;
+	size_t num_int16 = N * 2;
 	for (size_t i = 0; i < num_int16; i += 2) {
 		if (i + 1 >= num_int16) break;
 		fprintf(dump_file, "%04X%04X\n", (uint16_t)buf16[i], (uint16_t)buf16[i + 1]);
@@ -85,10 +85,10 @@ void dma_channel::start_transfer_for_buf(int buffer_id) {
 int dma_channel::wait_for_transfer() {
 	if (ch.in_progress_count) {
 		ioctl(ch.fd, FINISH_XFER, &ch.buffer_id);
-		printf("Finish transfer for DMA buffer %d devnode %s\n", ch.buffer_id, config.devnode.c_str());
 
 		if (ch.buf_ptr[ch.buffer_id].status != channel_buffer::proxy_status::PROXY_NO_ERROR) {
-			printf("DMA transfer error devnode %s, # transfers %d, # completed %d, # in progress %d\n",
+			printf("DMA transfer error buffer %d, devnode %s, # transfers %d, # completed %d, # in progress %d\n",
+			       ch.buffer_id,
 			       config.devnode.c_str(),
 			       num_transfers,
 			       ch.counter,
@@ -99,7 +99,7 @@ int dma_channel::wait_for_transfer() {
 			if (ch.buf_ptr[ch.buffer_id].status == channel_buffer::proxy_status::PROXY_TIMEOUT) {
 				fprintf(stderr, "DMA devnode %s timeout\n", config.devnode.c_str());
 			}
-			return - 1;
+			return ch.buf_ptr[ch.buffer_id].status;
 		}
 
 		if (flag_save_buf) {
@@ -107,6 +107,7 @@ int dma_channel::wait_for_transfer() {
 		}
 		ch.in_progress_count--;
 		ch.counter++;
+		printf("Finish transfer for DMA buffer %d devnode %s # completed transfers %d\n", ch.buffer_id, config.devnode.c_str(), ch.counter);
 	}
 	// ch.buffer_id = ch.counter % ch.buffer_count;
 	return 0;

@@ -55,21 +55,22 @@ public:
 
 		for (ch.buffer_id = 0; ch.buffer_id < ch.buffer_count; ++ch.buffer_id) {
 			ch.buf_ptr[ch.buffer_id].length = ch.buffer_size;
-			start_transfer();
-			if (num_transfers && (++ch.in_progress_count >= num_transfers)) break;
+			start_transfer_for_buf(ch.buffer_id);
+			if (num_transfers && (ch.in_progress_count >= num_transfers)) break;
 		}
 
 		ch.buffer_id = 0;
 	}
 
 	void run() override {
-		if (!wait_for_transfer() || (num_transfers && (ch.counter >= num_transfers))) {
+		if (wait_for_transfer() || (num_transfers && (ch.counter >= num_transfers))) {
 			stop();
 			return;
 		}
 
 		if (num_transfers && ((ch.counter + ch.in_progress_count) < num_transfers)) {
 			start_transfer();
+			piCout << "Started transfer for buffer " << ch.buffer_id << "global cnt is " << ch.buffer_count;
 		}
 		ch.buffer_id = (ch.buffer_id + 1) % ch.buffer_count;
 	}

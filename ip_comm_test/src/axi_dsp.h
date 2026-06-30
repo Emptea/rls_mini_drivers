@@ -10,6 +10,15 @@ enum fd_err {
     FD_ERR_NO_DEVICE,
 };
 
+enum tp {
+        TP_WORK = 0,
+        TP_BYPASS = 1,
+        TP_CUT = 2,
+        TP_FAPCH = 3,
+        TP_LOU = 4,
+        TP_SF = 5,
+};
+
 typedef struct {
     uint32_t REAL :16; // Real part, signed 2s complement, 2**14 = 1.0
     uint32_t IMAG :16; // Imaginary part, signed 2s complement, 2**14 = 1.0

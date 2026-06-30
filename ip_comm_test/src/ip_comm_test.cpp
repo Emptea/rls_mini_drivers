@@ -33,7 +33,7 @@
 
 int main(int argc, char * argv[]) {
 	if (argc < 5) {
-		printf("usage: %s <test_point> <channel> <input_file> <output_file>\n", argv[0]);
+		printf("usage: %s <test_point> <channel> <num_transfers> <input_file> <output_file>\n", argv[0]);
 		return 1;
 	}
 
@@ -55,8 +55,9 @@ int main(int argc, char * argv[]) {
 
 	uint32_t test_point      = (uint32_t)strtol(argv[1], NULL, 0);
 	uint32_t channel         = (uint32_t)strtol(argv[2], NULL, 0);
-	const char * input_file  = argv[3];
-	const char * output_file = argv[4]; // File to dump RX data (optional, can be empty string)
+	uint32_t num_transfers   = (uint32_t)strtol(argv[3], NULL, 0);
+	const char * input_file  = argv[4];
+	const char * output_file = argv[5]; // File to dump RX data (optional, can be empty string)
 
 	axi_dsp_init();
 	axi_dsp_set_output_source(test_point, channel);
@@ -65,8 +66,21 @@ int main(int argc, char * argv[]) {
 	axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;
-	uint32_t num_transfers   = 16;
-	uint32_t n_samps_per_buf = 232;
+	// uint32_t num_transfers   = 16;
+	uint32_t n_samps_per_buf = 141;
+
+	switch (test_point) {
+	case TP_BYPASS: {
+		n_samps_per_buf = N_SAMPS_IN_TX_BUF;
+		break;
+	}
+	case TP_CUT:
+	case TP_FAPCH:
+	default: {
+		n_samps_per_buf = 141;
+		break;
+	}
+	}
 
 	PIVector<dma_channel *> dma_channels;
 
@@ -110,9 +124,13 @@ int main(int argc, char * argv[]) {
 	int buff_id = 0;
 	for (size_t i = 0; i < num_transfers; i++) {
 		uint8_t * current_buffers[TX_BUFFER_COUNT];
+		piCout << "Tx buffer adresses for transfer #" << i << " are:";
 		for (size_t k = 0; k < NUM_CHANNELS_TX; k++) {
 			dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
 			current_buffers[k] = (uint8_t *)tx_buffers[k][buff_id];
+			for (size_t j = 0; j < TX_BUFFER_COUNT; j++) {
+				piCout << "ch" << k << " buf" << j << " " << PICoutManipulators::PICoutFormat::Hex << tx_buffers[k][j];
+			}
 		}
 		size_t offset = i * n_samps_per_buf * N_PACKS_IN_TX_BUF;
 		misc_read_8chs_from_file(input_file, current_buffers, buf_size, offset);

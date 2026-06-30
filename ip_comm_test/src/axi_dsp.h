@@ -43,6 +43,7 @@ csr_output_source_t axi_dsp_get_output_source();
 csr_apu_rank_t axi_dsp_get_apu_rank();
 uint32_t axi_dsp_get_detector_level(uint32_t num);
 float axi_dsp_get_azimuth_angle();
+float axi_dsp_get_compensation_ref();
 uint32_t axi_dsp_get_apply();
 
 void axi_dsp_set_test_point(uint32_t tp);
@@ -63,6 +64,7 @@ void axi_dsp_set_output_source(uint32_t src, uint32_t src_channel);
 void axi_dsp_set_apu_rank(uint32_t rank, uint32_t window);
 void axi_dsp_set_detector_level(uint32_t level, uint32_t num);
 void axi_dsp_set_azimuth_angle(float angle);
+void axi_dsp_set_compensation_ref(float ref);
 
 void axi_dsp_kill();
 void axi_dsp_apply();

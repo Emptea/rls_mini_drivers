@@ -245,6 +245,16 @@ float axi_dsp_get_azimuth_angle()
     return read_angle(CSR_AZIMUTH_ANGLE_ADDR);
 }
 
+float axi_dsp_get_compensation_ref()
+{
+    uint32_t raw;
+    float ref;
+
+    axi_read(&raw, CSR_COMPENSATION_REFERENCE_ADDR);
+    ref = (raw & CSR_COMPENSATION_REFERENCE_REAL_MASK) >> CSR_COMPENSATION_REFERENCE_REAL_LSB;
+    return ref;
+}
+
 uint32_t axi_dsp_get_apply()
 {
     return read_u32(CSR_APPLY_ADDR);
@@ -360,6 +370,12 @@ void axi_dsp_set_detector_level(uint32_t level, uint32_t num)
 void axi_dsp_set_azimuth_angle(float angle)
 {
     write_angle(angle, CSR_AZIMUTH_ANGLE_ADDR);
+}
+
+void axi_dsp_set_compensation_ref(float ref)
+{
+    uint32_t ref_i16 = float_to_fix(ref, MANUAL_COMPENSATION_ORD);
+    axi_write(ref_i16, CSR_COMPENSATION_REFERENCE_ADDR);
 }
 
 void axi_dsp_kill()

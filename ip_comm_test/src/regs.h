@@ -18,7 +18,7 @@ extern "C" {
 
 // ip_ver - IP version
 #define CSR_IP_VER_ADDR 0x0
-#define CSR_IP_VER_RESET 0x0
+#define CSR_IP_VER_RESET 0x20000
 typedef struct {
     uint32_t MIN_VER : 16; // Minor IP version
     uint32_t MAJ_VER : 16; // Major IP version
@@ -34,7 +34,7 @@ typedef struct {
 #define CSR_IP_VER_MAJ_VER_WIDTH 16
 #define CSR_IP_VER_MAJ_VER_LSB 16
 #define CSR_IP_VER_MAJ_VER_MASK 0xffff0000
-#define CSR_IP_VER_MAJ_VER_RESET 0x0
+#define CSR_IP_VER_MAJ_VER_RESET 0x2
 
 // kill - Synchronous reset register
 #define CSR_KILL_ADDR 0x4
@@ -1750,6 +1750,20 @@ typedef struct {
 #define CSR_APPLY_APPLY_MASK 0x1
 #define CSR_APPLY_APPLY_RESET 0x0
 
+// compensation_reference - 
+#define CSR_COMPENSATION_REFERENCE_ADDR 0x170
+#define CSR_COMPENSATION_REFERENCE_RESET 0x0
+typedef struct {
+    uint32_t REAL : 16; // Real part, signed 2s complement, 2**14 = 1.0
+    uint32_t : 16; // reserved
+} csr_compensation_reference_t;
+
+// compensation_reference.real - Real part, signed 2s complement, 2**14 = 1.0
+#define CSR_COMPENSATION_REFERENCE_REAL_WIDTH 16
+#define CSR_COMPENSATION_REFERENCE_REAL_LSB 0
+#define CSR_COMPENSATION_REFERENCE_REAL_MASK 0xffff
+#define CSR_COMPENSATION_REFERENCE_REAL_RESET 0x0
+
 
 // Register map structure
 typedef struct {
@@ -2120,6 +2134,10 @@ typedef struct {
     union {
         __IO uint32_t APPLY; // 
         __IO csr_apply_t APPLY_bf; // Bit access for APPLY register
+    };
+    union {
+        __IO uint32_t COMPENSATION_REFERENCE; // 
+        __IO csr_compensation_reference_t COMPENSATION_REFERENCE_bf; // Bit access for COMPENSATION_REFERENCE register
     };
 } csr_t;
 

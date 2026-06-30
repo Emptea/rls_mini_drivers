@@ -14,7 +14,8 @@
 #define DRV_NAME "rls_mini_pl"
 #define DEV_NAME "rls_mini_pl"
 
-#define REG_MAX_OFFSET CSR_APPLY_ADDR
+#define REG_MAX_OFFSET CSR_COMPENSATION_REFERENCE_ADDR
+#define REG_MIN_OFFSET CSR_IP_VER_ADDR
 #define REG_SIZE       sizeof(u32)
 
 struct rls_mini_pl_dev {
@@ -32,7 +33,7 @@ static bool reg_is_valid(u32 off)
     if (off % 4 != 0) {
         return false;
     }
-    if (off < CSR_IP_VER_ADDR || off > CSR_APPLY_ADDR) {
+    if (off < REG_MIN_OFFSET || off > REG_MAX_OFFSET) {
         return false;
     }
     return true;

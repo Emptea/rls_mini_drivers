@@ -19,7 +19,7 @@ class dma_channel: public PIThread {
 
 private:
 	struct channel {
-		channel_buffer * buf_ptr = nullptr; // proxy‑driver ring
+		channel_contagious_buffer * buf_ptr = nullptr; // proxy‑driver ring
 		int fd                   = -1;
 		int buffer_size          = 0;
 		int counter              = 0;
@@ -54,7 +54,7 @@ public:
 		printf("Start DMA devnode %s\n", config.devnode.c_str());
 
 		for (ch.buffer_id = 0; ch.buffer_id < ch.buffer_count; ++ch.buffer_id) {
-			ch.buf_ptr[ch.buffer_id].length = ch.buffer_size;
+			ch.buf_ptr->states[ch.buffer_id].length = ch.buffer_size;
 			start_transfer_for_buf(ch.buffer_id);
 			if (num_transfers && (ch.in_progress_count >= num_transfers)) break;
 		}
@@ -78,11 +78,11 @@ public:
 	void end() override { cleanup(); }
 
 
-	void * get_buffer(size_t num) const { return ch.buf_ptr[num].buffer; }
+	void * get_buffer(size_t num) const { return (void *)&ch.buf_ptr->buffers[num].buffer; }
 
 	void get_all_buffers(void ** buffer_array) const {
 		for (size_t i = 0; i < ch.buffer_count; ++i) {
-			buffer_array[i] = static_cast<void *>(&ch.buf_ptr[i].buffer);
+			buffer_array[i] = static_cast<void *>(&ch.buf_ptr->buffers[i].buffer);
 		}
 	}
 

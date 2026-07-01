@@ -25,7 +25,7 @@ void dma_channel::save_buf_to_file(void * buffer, int N) {
 }
 
 int dma_channel::init(ch_config cfg) {
-	// printf("Init started for devnode %s\n", cfg.devnode.c_str());
+	printf("Init started for devnode %s\n", cfg.devnode.c_str());
 	ch.buffer_count = cfg.buffer_count; // Add this line!
 	ch.buffer_size  = cfg.buffer_size;
 	config          = cfg;
@@ -34,15 +34,13 @@ int dma_channel::init(ch_config cfg) {
 		printf("Unable to open DMA proxy device file: %s\r", cfg.devnode.c_str());
 		return -1;
 	}
-
 	ch.buf_ptr = static_cast<channel_contagious_buffer *>(
-		mmap(nullptr, (sizeof(channel_buffer) +sizeof(channel_buffer_state)) * ch.buffer_count, PROT_READ | PROT_WRITE, MAP_SHARED, ch.fd, 0));
+		mmap(nullptr, sizeof(channel_contagious_buffer), PROT_READ | PROT_WRITE, MAP_SHARED, ch.fd, 0));
 	if (ch.buf_ptr == MAP_FAILED) {
 		ch.buf_ptr = nullptr;
 		printf("Memory map failed for DMA buffer devnode %s", cfg.devnode.c_str());
 		return -1;
 	}
-
 	ch.buffer_size = cfg.buffer_size;
 	config         = cfg;
 
@@ -50,7 +48,7 @@ int dma_channel::init(ch_config cfg) {
 		ch.buf_ptr->states[ch.buffer_id].length = ch.buffer_size;
 	}
 
-	// printf("Init complete for devnode %s\n", config.devnode.c_str());
+	printf("Init complete for devnode %s\n", config.devnode.c_str());
 	return 0;
 }
 

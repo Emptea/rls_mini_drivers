@@ -63,6 +63,21 @@ int main(int argc, char * argv[]) {
 	axi_dsp_set_output_source(test_point, channel);
 	auto v = axi_dsp_get_output_source();
 	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";
+	cmplx_f64 manual_comp   = {.real = 1, .imag = 0};
+	cmplx_f64 diagrams_even = {.real = 1, .imag = 0};
+	cmplx_f64 diagrams_odd  = {.real = 0, .imag = 1};
+	for (size_t i = 0; i < NUM_CHANNELS_TX; i++) {
+		axi_dsp_set_manual_compensation(manual_comp, i);
+		axi_dsp_set_diagram_0(diagrams_even, i);
+		axi_dsp_set_diagram_1(diagrams_odd, i);
+		axi_dsp_set_diagram_2(diagrams_even, i);
+		axi_dsp_set_diagram_3(diagrams_odd, i);
+		axi_dsp_set_diagram_4(diagrams_even, i);
+		axi_dsp_set_diagram_5(diagrams_odd, i);
+		axi_dsp_set_diagram_6(diagrams_even, i);
+		axi_dsp_set_diagram_7(diagrams_odd, i);
+	}
+	axi_dsp_set_compensation_mode(1);
 	axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;

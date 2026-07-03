@@ -9,18 +9,12 @@
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
+#include "regs.h"
 
 #define DRV_NAME "axi_multiplier"
 #define DEV_NAME "axi_multiplier"
 
-#define REG_OFFSET_IP_VER     0x00
-#define REG_OFFSET_KILL       0x04
-#define REG_OFFSET_TEST_POINT 0x08
-#define REG_OFFSET_CHANNEL    0x0C
-#define REG_OFFSET_MULT0      0x10
-#define REG_OFFSET_MULT1      0x14
-
-#define REG_MAX_OFFSET REG_OFFSET_MULT1
+#define REG_MAX_OFFSET CSR_MULT7_ADDR
 #define REG_SIZE       sizeof(u32)
 
 struct axi_mult_dev {
@@ -36,12 +30,18 @@ struct axi_mult_dev {
 static bool reg_is_valid(u32 off)
 {
     switch (off) {
-    case REG_OFFSET_IP_VER:
-    case REG_OFFSET_KILL:
-    case REG_OFFSET_TEST_POINT:
-    case REG_OFFSET_CHANNEL:
-    case REG_OFFSET_MULT0:
-    case REG_OFFSET_MULT1:
+    case CSR_IP_VER_ADDR:
+    case CSR_KILL_ADDR:
+    case CSR_TEST_POINT_ADDR:
+    case CSR_CHANNEL_ADDR:
+    case CSR_MULT0_ADDR:
+    case CSR_MULT1_ADDR:
+    case CSR_MULT2_ADDR:
+    // case CSR_MULT3_ADDR:
+    case CSR_MULT4_ADDR:
+    case CSR_MULT5_ADDR:
+    case CSR_MULT6_ADDR:
+    case CSR_MULT7_ADDR:
         return true;
     default:
         return false;

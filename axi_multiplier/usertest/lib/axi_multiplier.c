@@ -3,16 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "axi_multiplier.h"
-
-enum regmap
-{
-    REGMAP_IP_VER = 0x00,
-    REGMAP_KILL = 0x04,
-    REGMAP_TP = 0x08,
-    REGMAP_CH = 0x0C,
-    REGMAP_MULT0 = 0x10,
-    REGMAP_MULT1 = 0x14,
-};
+#include "regs.h"
 
 int fd;
 
@@ -66,7 +57,7 @@ uint32_t axi_multiplier_read(uint32_t *val, uint32_t regmap_offset)
 void axi_multiplier_get_ip_ver(uint16_t *ver_maj, uint16_t *ver_min)
 {
     uint32_t ver;
-    axi_multiplier_read(&ver, REGMAP_IP_VER);
+    axi_multiplier_read(&ver, CSR_IP_VER_ADDR);
     *ver_maj = (uint16_t)(0xFFFF & (ver >> 16));
     *ver_min = (uint16_t)(0xFFFF & ver);
 }
@@ -74,21 +65,21 @@ void axi_multiplier_get_ip_ver(uint16_t *ver_maj, uint16_t *ver_min)
 uint32_t axi_multiplier_get_kill()
 {
     uint32_t kill;
-    axi_multiplier_read(&kill, REGMAP_KILL);
+    axi_multiplier_read(&kill, CSR_KILL_ADDR);
     return kill;
 }
 
 uint32_t axi_multiplier_get_tp()
 {
     uint32_t tp;
-    axi_multiplier_read(&tp, REGMAP_TP);
+    axi_multiplier_read(&tp, CSR_TEST_POINT_ADDR);
     return tp;
 }
 
 uint32_t axi_multiplier_get_ch()
 {
     uint32_t ch;
-    axi_multiplier_read(&ch, REGMAP_CH);
+    axi_multiplier_read(&ch, CSR_CHANNEL_ADDR);
     return ch;
 }
 
@@ -96,7 +87,31 @@ int16_t axi_multiplier_get_mult(uint32_t ch_num)
 {
     uint32_t data, regmap_offset;
     int16_t mult_val;
-    regmap_offset = REGMAP_MULT0 + 4 * ch_num;
+    switch (ch_num)
+    {
+    case 0:
+        regmap_offset = CSR_MULT0_ADDR;
+        break;
+    case 1:
+        regmap_offset = CSR_MULT1_ADDR;
+        break;
+    case 2:
+        regmap_offset = CSR_MULT2_ADDR;
+        break;
+    case 4:
+        regmap_offset = CSR_MULT4_ADDR;
+        break;
+    case 5:
+        regmap_offset = CSR_MULT5_ADDR;
+        break;
+    case 6:
+        regmap_offset = CSR_MULT6_ADDR;
+        break;
+    case 7:
+        regmap_offset = CSR_MULT7_ADDR;
+        break;
+    }
+    // regmap_offset = CSR_MULT0_ADDR + 4 * ch_num;
     axi_multiplier_read(&data, regmap_offset);
     mult_val = (int16_t)data;
     return mult_val;
@@ -104,12 +119,12 @@ int16_t axi_multiplier_get_mult(uint32_t ch_num)
 
 void axi_multiplier_set_kill()
 {
-    axi_multiplier_write(1, REGMAP_KILL);
+    axi_multiplier_write(1, CSR_KILL_ADDR);
 }
 
 void axi_multiplier_reset_kill()
 {
-    axi_multiplier_write(0, REGMAP_KILL);
+    axi_multiplier_write(0, CSR_KILL_ADDR);
 }
 
 void axi_multiplier_reset()
@@ -120,18 +135,42 @@ void axi_multiplier_reset()
 
 void axi_multiplier_set_tp(uint32_t tp)
 {
-    axi_multiplier_write(tp, REGMAP_TP);
+    axi_multiplier_write(tp, CSR_TEST_POINT_ADDR);
 }
 
 void axi_multiplier_set_ch(uint32_t ch)
 {
-    axi_multiplier_write(ch, REGMAP_CH);
+    axi_multiplier_write(ch, CSR_CHANNEL_ADDR);
 }
 
 void axi_multiplier_set_mult(int16_t val, uint32_t ch_num)
 {
     uint32_t val_u32 = (uint32_t)(int32_t)val;
     uint32_t regmap_offset;
-    regmap_offset = REGMAP_MULT0 + 4 * ch_num;
+    switch (ch_num)
+    {
+    case 0:
+        regmap_offset = CSR_MULT0_ADDR;
+        break;
+    case 1:
+        regmap_offset = CSR_MULT1_ADDR;
+        break;
+    case 2:
+        regmap_offset = CSR_MULT2_ADDR;
+        break;
+    case 4:
+        regmap_offset = CSR_MULT4_ADDR;
+        break;
+    case 5:
+        regmap_offset = CSR_MULT5_ADDR;
+        break;
+    case 6:
+        regmap_offset = CSR_MULT6_ADDR;
+        break;
+    case 7:
+        regmap_offset = CSR_MULT7_ADDR;
+        break;
+    }
+    // regmap_offset = CSR_MULT0_ADDR + 4 * ch_num;
     axi_multiplier_write(val_u32, regmap_offset);
 }

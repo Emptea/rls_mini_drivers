@@ -18,7 +18,7 @@ extern "C" {
 
 // ip_ver - IP version
 #define CSR_IP_VER_ADDR 0x0
-#define CSR_IP_VER_RESET 0x0
+#define CSR_IP_VER_RESET 0x10001
 typedef struct {
     uint32_t MIN_VER : 16; // Minor IP version
     uint32_t MAJ_VER : 16; // Major IP version
@@ -28,13 +28,13 @@ typedef struct {
 #define CSR_IP_VER_MIN_VER_WIDTH 16
 #define CSR_IP_VER_MIN_VER_LSB 0
 #define CSR_IP_VER_MIN_VER_MASK 0xffff
-#define CSR_IP_VER_MIN_VER_RESET 0x0
+#define CSR_IP_VER_MIN_VER_RESET 0x1
 
 // ip_ver.maj_ver - Major IP version
 #define CSR_IP_VER_MAJ_VER_WIDTH 16
 #define CSR_IP_VER_MAJ_VER_LSB 16
 #define CSR_IP_VER_MAJ_VER_MASK 0xffff0000
-#define CSR_IP_VER_MAJ_VER_RESET 0x0
+#define CSR_IP_VER_MAJ_VER_RESET 0x1
 
 // kill - Synchronous reset register
 #define CSR_KILL_ADDR 0x4
@@ -119,6 +119,20 @@ typedef struct {
 #define CSR_MULT2_MULT2_LSB 0
 #define CSR_MULT2_MULT2_MASK 0xffff
 #define CSR_MULT2_MULT2_RESET 0x0
+
+// mult3 - Multiplication value for ch3
+#define CSR_MULT3_ADDR 0x1c
+#define CSR_MULT3_RESET 0x0
+typedef struct {
+    uint32_t MULT3 : 16; // Multiplication value for ch3
+    uint32_t : 16; // reserved
+} csr_mult3_t;
+
+// mult3.mult3 - Multiplication value for ch3
+#define CSR_MULT3_MULT3_WIDTH 16
+#define CSR_MULT3_MULT3_LSB 0
+#define CSR_MULT3_MULT3_MASK 0xffff
+#define CSR_MULT3_MULT3_RESET 0x0
 
 // mult4 - Multiplication value for ch4
 #define CSR_MULT4_ADDR 0x20
@@ -207,7 +221,10 @@ typedef struct {
         __IO uint32_t MULT2; // Multiplication value for ch2
         __IO csr_mult2_t MULT2_bf; // Bit access for MULT2 register
     };
-    __IO uint32_t RESERVED0[1];
+    union {
+        __IO uint32_t MULT3; // Multiplication value for ch3
+        __IO csr_mult3_t MULT3_bf; // Bit access for MULT3 register
+    };
     union {
         __IO uint32_t MULT4; // Multiplication value for ch4
         __IO csr_mult4_t MULT4_bf; // Bit access for MULT4 register

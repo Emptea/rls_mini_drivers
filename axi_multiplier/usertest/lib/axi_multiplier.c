@@ -87,31 +87,7 @@ int16_t axi_multiplier_get_mult(uint32_t ch_num)
 {
     uint32_t data, regmap_offset;
     int16_t mult_val;
-    switch (ch_num)
-    {
-    case 0:
-        regmap_offset = CSR_MULT0_ADDR;
-        break;
-    case 1:
-        regmap_offset = CSR_MULT1_ADDR;
-        break;
-    case 2:
-        regmap_offset = CSR_MULT2_ADDR;
-        break;
-    case 4:
-        regmap_offset = CSR_MULT4_ADDR;
-        break;
-    case 5:
-        regmap_offset = CSR_MULT5_ADDR;
-        break;
-    case 6:
-        regmap_offset = CSR_MULT6_ADDR;
-        break;
-    case 7:
-        regmap_offset = CSR_MULT7_ADDR;
-        break;
-    }
-    // regmap_offset = CSR_MULT0_ADDR + 4 * ch_num;
+    regmap_offset = CSR_MULT0_ADDR + 4 * ch_num;
     axi_multiplier_read(&data, regmap_offset);
     mult_val = (int16_t)data;
     return mult_val;
@@ -147,30 +123,6 @@ void axi_multiplier_set_mult(int16_t val, uint32_t ch_num)
 {
     uint32_t val_u32 = (uint32_t)(int32_t)val;
     uint32_t regmap_offset;
-    switch (ch_num)
-    {
-    case 0:
-        regmap_offset = CSR_MULT0_ADDR;
-        break;
-    case 1:
-        regmap_offset = CSR_MULT1_ADDR;
-        break;
-    case 2:
-        regmap_offset = CSR_MULT2_ADDR;
-        break;
-    case 4:
-        regmap_offset = CSR_MULT4_ADDR;
-        break;
-    case 5:
-        regmap_offset = CSR_MULT5_ADDR;
-        break;
-    case 6:
-        regmap_offset = CSR_MULT6_ADDR;
-        break;
-    case 7:
-        regmap_offset = CSR_MULT7_ADDR;
-        break;
-    }
-    // regmap_offset = CSR_MULT0_ADDR + 4 * ch_num;
+    regmap_offset = CSR_MULT0_ADDR + 4 * ch_num;
     axi_multiplier_write(val_u32, regmap_offset);
 }

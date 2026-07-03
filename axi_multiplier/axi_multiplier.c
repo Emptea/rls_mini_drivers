@@ -37,7 +37,7 @@ static bool reg_is_valid(u32 off)
     case CSR_MULT0_ADDR:
     case CSR_MULT1_ADDR:
     case CSR_MULT2_ADDR:
-    // case CSR_MULT3_ADDR:
+    case CSR_MULT3_ADDR:
     case CSR_MULT4_ADDR:
     case CSR_MULT5_ADDR:
     case CSR_MULT6_ADDR:

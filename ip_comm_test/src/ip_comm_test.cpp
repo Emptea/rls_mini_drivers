@@ -59,26 +59,27 @@ int main(int argc, char * argv[]) {
 	const char * input_file  = argv[4];
 	const char * output_file = argv[5]; // File to dump RX data (optional, can be empty string)
 
-	axi_dsp_init();
-	axi_dsp_set_output_source(test_point, channel);
-	auto v = axi_dsp_get_output_source();
-	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";
-	cmplx_f64 manual_comp   = {.real = 1, .imag = 0};
-	cmplx_f64 diagrams_even = {.real = 1, .imag = 0};
-	cmplx_f64 diagrams_odd  = {.real = 0, .imag = 1};
-	for (size_t i = 0; i < NUM_CHANNELS_TX; i++) {
-		axi_dsp_set_manual_compensation(manual_comp, i);
-		axi_dsp_set_diagram_0(diagrams_even, i);
-		axi_dsp_set_diagram_1(diagrams_odd, i);
-		axi_dsp_set_diagram_2(diagrams_even, i);
-		axi_dsp_set_diagram_3(diagrams_odd, i);
-		axi_dsp_set_diagram_4(diagrams_even, i);
-		axi_dsp_set_diagram_5(diagrams_odd, i);
-		axi_dsp_set_diagram_6(diagrams_even, i);
-		axi_dsp_set_diagram_7(diagrams_odd, i);
-	}
-	axi_dsp_set_compensation_mode(1);
-	axi_dsp_apply();
+	// axi_dsp_init();
+	// axi_dsp_set_output_source(test_point, channel);
+	// auto v = axi_dsp_get_output_source();
+	// piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";
+	// cmplx_f64 manual_comp   = {.real = 1, .imag = 0};
+	// cmplx_f64 diagrams_even = {.real = 1, .imag = 0};
+	// cmplx_f64 diagrams_odd  = {.real = 0, .imag = 1};
+	// for (size_t i = 0; i < NUM_CHANNELS_TX; i++) {
+	// 	// cmplx_f64 manual_comp   = {.real = 1/float(i+1), .imag = 1};
+	// 	axi_dsp_set_manual_compensation(manual_comp, i);
+	// 	axi_dsp_set_diagram_0(diagrams_even, i);
+	// 	axi_dsp_set_diagram_1(diagrams_odd, i);
+	// 	axi_dsp_set_diagram_2(diagrams_even, i);
+	// 	axi_dsp_set_diagram_3(diagrams_odd, i);
+	// 	axi_dsp_set_diagram_4(diagrams_even, i);
+	// 	axi_dsp_set_diagram_5(diagrams_odd, i);
+	// 	axi_dsp_set_diagram_6(diagrams_even, i);
+	// 	axi_dsp_set_diagram_7(diagrams_odd, i);
+	// }
+	// axi_dsp_set_compensation_mode(1);
+	// axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;
 	// uint32_t num_transfers   = 16;
@@ -115,7 +116,8 @@ int main(int argc, char * argv[]) {
 	piCout << "Wait for DMA init";
 	dma_channels[0]->init(rx_config);
 	dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
-	dma_channels[0]->set_num_transfers(num_transfers * N_PACKS_IN_TX_BUF);
+	// dma_channels[0]->set_num_transfers(num_transfers * N_PACKS_IN_TX_BUF);
+	dma_channels[0]->set_num_transfers(num_transfers);
 	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
 		rx_buffers[i] = dma_channels[0]->get_buffer(i);
 	}
@@ -152,7 +154,7 @@ int main(int argc, char * argv[]) {
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->start_transfer();
 		}
-		180_us .sleep();
+		100_us .sleep();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->wait_for_transfer();
 		}
@@ -167,7 +169,7 @@ int main(int argc, char * argv[]) {
 		delete dma_channels[k];
 		dma_channels[k] = nullptr;
 	}
-	axi_dsp_deinit();
+	// axi_dsp_deinit();
 	piDeleteSafety(kbd);
 
 	return 0;

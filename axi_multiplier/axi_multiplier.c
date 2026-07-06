@@ -50,7 +50,7 @@ static bool reg_is_valid(u32 off)
 
 static bool reg_is_writable(u32 off)
 {
-    return off != REG_OFFSET_IP_VER;
+    return off != CSR_IP_VER_ADDR;
 }
 
 static loff_t axi_llseek(struct file *filp, loff_t off, int whence)

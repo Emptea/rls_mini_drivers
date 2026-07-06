@@ -10,11 +10,11 @@ int main(int argc, char *argv[])
 {
     if (argc < 3)
     {
-        printf("usage: %s <mult0_val> <mult1_val>\n", argv[0]);
+        printf("usage: %s <mult_val> ><ch_num>\n", argv[0]);
         return 1;
     }
-    int16_t mult0 = (int16_t)strtol(argv[1], NULL, 0);
-    int16_t mult1 = (int16_t)strtol(argv[2], NULL, 0);
+    int16_t mult = (int16_t)strtol(argv[1], NULL, 0);
+    uint32_t ch = (uint32_t)strtol(argv[2], NULL, 0);
 
     if (axi_multiplier_init())
     {
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
         printf(RED "Test point check failed" RESET "\n");
     }
 
-    uint32_t ch = 0;
+    // uint32_t ch = 2;
     uint32_t ch_get;
     axi_multiplier_set_ch(ch);
     ch_get = axi_multiplier_get_ch();
@@ -44,20 +44,14 @@ int main(int argc, char *argv[])
         printf(RED "Channel check failed" RESET "\n");
     }
 
-    int16_t mult0_get, mult1_get;
-    axi_multiplier_set_mult(mult0, 0);
-    mult0_get = axi_multiplier_get_mult(0);
-    axi_multiplier_set_mult(mult1, 1);
-    mult1_get = axi_multiplier_get_mult(1);
-    printf("Set multiplier value %d for ch %d, returned %d\n", mult0, 0, mult0_get);
-    if (mult0 != mult0_get)
-    {
-        printf(RED "Value is not set into multiplier ch 0" RESET "\n");
-    }
-    printf("Set multiplier value %d for ch %d, returned %d\n", mult1, 1, mult1_get);
-    if (mult1 != mult1_get)
-    {
-        printf(RED "Value is not set into multiplier ch 1" RESET "\n");
+    for (size_t ch_num = 0; ch_num < 8; ch_num++){
+        axi_multiplier_set_mult(mult, ch_num);
+        int16_t mult_get = axi_multiplier_get_mult(ch_num);
+        printf("Set multiplier value %d for ch %ld, returned %d\n", mult, ch_num, mult_get);
+        if (mult != mult_get)
+        {
+            printf(RED "Value is not set into multiplier ch %ld" RESET "\n", ch_num);
+        }
     }
 
     axi_multiplier_deinit();

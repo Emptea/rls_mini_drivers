@@ -6,14 +6,6 @@
 #define __O  volatile       // 'write only' permissions
 #define __IO volatile       // 'read / write' permissions
 
-
-#ifdef __cplusplus
-#include <cstdint>
-extern "C" {
-#else
-#include <stdint.h>
-#endif
-
 #define CSR_BASE_ADDR 0x0
 
 // ip_ver - IP version
@@ -244,9 +236,5 @@ typedef struct {
 } csr_t;
 
 #define CSR ((csr_t*)(CSR_BASE_ADDR))
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __REGS_H */

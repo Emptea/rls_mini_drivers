@@ -30,6 +30,10 @@ make_rc(${PROJECT_NAME} out_RC)
 file(GLOB CPPS "*.cpp")
 file(GLOB HDRS "*.h")
 # pip_code_model(CCM_PROTOCOL "protocol_rls_mini.h" OPTIONS "-SEMs" NAME "ccm_protocol")
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 add_executable(${PROJECT_NAME} ${CPPS} ${CS} ${HDRS} ${out_RC})
 target_link_libraries(${PROJECT_NAME} PIP::Console PIP::IOUtils)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

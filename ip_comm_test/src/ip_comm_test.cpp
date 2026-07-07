@@ -17,6 +17,10 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <iostream>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 #define RX_DEV          "/dev/dma_proxy_rx"
 #define TX_DEV_CH0      "/dev/dma_proxy_tx_ch0"
@@ -37,6 +41,13 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
+	PIString dir_path_str = StdString2PIString(misc_get_date());
+	fs::path dir_path = PIString2StdString(dir_path_str);
+
+	if (fs::create_directories(dir_path)) {
+		piCout << "Created directory" << dir_path_str;
+    }
+	piCout << "Save to directory" << dir_path_str;
 
 	PISignals::setSlot([](PISignals::Signal s) {
 		piCout << "Signal" << s;
@@ -57,7 +68,7 @@ int main(int argc, char * argv[]) {
 	uint32_t channel         = (uint32_t)strtol(argv[2], NULL, 0);
 	uint32_t num_transfers   = (uint32_t)strtol(argv[3], NULL, 0);
 	const char * input_file  = argv[4];
-	const char * output_file = argv[5]; // File to dump RX data (optional, can be empty string)
+	PIString output_file = dir_path_str + "/" + argv[5]; // File to dump RX data (optional, can be empty string)
 
 	axi_dsp_init();
 	axi_dsp_set_output_source(test_point, channel);
@@ -91,6 +102,8 @@ int main(int argc, char * argv[]) {
 	}
 	case TP_CUT:
 	case TP_FAPCH:
+	case TP_LOU:
+	case TP_SF:
 	default: {
 		n_samps_per_buf = 141;
 		break;
@@ -160,7 +173,7 @@ int main(int argc, char * argv[]) {
 	}
 	dma_channels[0]->waitForFinish();
 
-	WAIT_FOR_EXIT;
+	// WAIT_FOR_EXIT;
 
 	for (int k = dma_channels.size() - 1; k >= 0; k--) {
 		dma_channels[k]->cleanup();

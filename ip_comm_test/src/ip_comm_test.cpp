@@ -147,21 +147,24 @@ int main(int argc, char * argv[]) {
 			piCout << "ch" << i << " buf" << k << " " << PICoutManipulators::PICoutFormat::Hex << tx_buffers[i][k];
 		}
 	}
+	
+	uint8_t * current_buffers[TX_BUFFER_COUNT];
+	for (size_t k = 0; k < NUM_CHANNELS_TX; k++) {
+		dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
+		current_buffers[k] = (uint8_t *)tx_buffers[k][0];
+	}
+	size_t cnt = 0;
 
 	dma_channels[0]->start(45_us);
 	int buff_id = 0;
 	for (size_t i = 0; i < num_transfers; i++) {
-		uint8_t * current_buffers[TX_BUFFER_COUNT];
-		piCout << "Tx buffer adresses for transfer #" << i << " are:";
-		for (size_t k = 0; k < NUM_CHANNELS_TX; k++) {
-			dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
-			current_buffers[k] = (uint8_t *)tx_buffers[k][buff_id];
-			for (size_t j = 0; j < TX_BUFFER_COUNT; j++) {
-				piCout << "ch" << k << " buf" << j << " " << PICoutManipulators::PICoutFormat::Hex << tx_buffers[k][j];
-			}
+		if (!(i % TX_BUFFER_COUNT))
+		{
+			misc_read_8chs_from_file(input_file, current_buffers, buf_size*TX_BUFFER_COUNT,  buf_size / sizeof(unsigned int) * TX_BUFFER_COUNT * cnt);
+			cnt++;
 		}
+
 		size_t offset = i * n_samps_per_buf * N_PACKS_IN_TX_BUF;
-		misc_read_8chs_from_file(input_file, current_buffers, buf_size, offset);
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->start_transfer();
 		}

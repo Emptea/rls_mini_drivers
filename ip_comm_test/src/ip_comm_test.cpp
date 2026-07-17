@@ -71,6 +71,7 @@ int main(int argc, char * argv[]) {
 	PIString output_file = dir_path_str + "/" + argv[5]; // File to dump RX data (optional, can be empty string)
 
 	axi_dsp_init();
+	axi_dsp_kill();
 	axi_dsp_set_output_source(test_point, channel);
 	auto v = axi_dsp_get_output_source();
 	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";

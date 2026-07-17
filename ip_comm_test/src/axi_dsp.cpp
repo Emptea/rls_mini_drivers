@@ -380,6 +380,7 @@ void axi_dsp_set_compensation_ref(float ref)
 
 void axi_dsp_kill()
 {
+    axi_write(0, CSR_KILL_ADDR);
     axi_write(1, CSR_KILL_ADDR);
 }
 

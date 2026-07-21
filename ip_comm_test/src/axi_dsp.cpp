@@ -8,6 +8,7 @@
 
 #define MANUAL_COMPENSATION_ORD 14
 #define ANGLE_ORD               32
+#define COMPENSATION_REFERENCE_ORD               14
 static int fd;
 
 static uint32_t axi_write(uint32_t val, uint32_t regmap_offset)
@@ -374,7 +375,7 @@ void axi_dsp_set_azimuth_angle(float angle)
 
 void axi_dsp_set_compensation_ref(float ref)
 {
-    uint32_t ref_i16 = float_to_fix(ref, MANUAL_COMPENSATION_ORD);
+    uint32_t ref_i16 = float_to_fix(ref, COMPENSATION_REFERENCE_ORD);
     axi_write(ref_i16, CSR_COMPENSATION_REFERENCE_ADDR);
 }
 

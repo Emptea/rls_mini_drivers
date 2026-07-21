@@ -89,7 +89,8 @@ int main(int argc, char * argv[]) {
 		axi_dsp_set_diagram_6(diagrams_even, i);
 		axi_dsp_set_diagram_7(diagrams_odd, i);
 	}
-	axi_dsp_set_compensation_mode(1);
+	axi_dsp_set_compensation_mode(0);
+	axi_dsp_set_compensation_ref(1e-3);
 	axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;

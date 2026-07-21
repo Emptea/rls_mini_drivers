@@ -149,14 +149,14 @@ int main(int argc, char * argv[]) {
 		}
 	}
 	
-	uint8_t * current_buffers[TX_BUFFER_COUNT];
+	uint8_t * current_buffers[NUM_CHANNELS_TX];
 	for (size_t k = 0; k < NUM_CHANNELS_TX; k++) {
-		dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
+		// dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
 		current_buffers[k] = (uint8_t *)tx_buffers[k][0];
 	}
 	size_t cnt = 0;
 
-	dma_channels[0]->start(45_us);
+	dma_channels[0]->start();
 	int buff_id = 0;
 	for (size_t i = 0; i < num_transfers; i++) {
 		if (!(i % TX_BUFFER_COUNT))
@@ -166,13 +166,24 @@ int main(int argc, char * argv[]) {
 		}
 
 		size_t offset = i * n_samps_per_buf * N_PACKS_IN_TX_BUF;
+		PISystemTime t0_send, t1_send;
+		t0_send = PISystemTime::current();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->start_transfer();
 		}
-		180_us .sleep();
+		t1_send = PISystemTime::current();
+		piCout << "start transfer - exit from start transfer time = " << t1_send - t0_send;
+
+		PISystemTime t0, t1;
+		125_us .sleep();
+		
+		t0 = PISystemTime::current();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->wait_for_transfer();
+			// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
 		}
+		t1 = PISystemTime::current();
+		piCout << "start wait - stop transfer time = " << t1 - t0;
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
 	}
 	dma_channels[0]->waitForFinish();

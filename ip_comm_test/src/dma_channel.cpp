@@ -69,13 +69,13 @@ void dma_channel::single_transfer_all_bufs() {
 
 void dma_channel::start_transfer() {
 	ch.buffer_id = ch.counter % ch.buffer_count;
-	printf("Start transfer for DMA buffer %d devnode %s\n", ch.buffer_id, config.devnode.c_str());
+	// printf("Start transfer for DMA buffer %d devnode %s\n", ch.buffer_id, config.devnode.c_str());
 	ioctl(ch.fd, START_XFER, &ch.buffer_id);
 	ch.in_progress_count++;
 }
 
 void dma_channel::start_transfer_for_buf(int buffer_id) {
-	printf("Start transfer for DMA buffer %d devnode %s\n", buffer_id, config.devnode.c_str());
+	// printf("Start transfer for DMA buffer %d devnode %s\n", buffer_id, config.devnode.c_str());
 	ioctl(ch.fd, START_XFER, &buffer_id);
 	ch.in_progress_count++;
 }
@@ -105,7 +105,7 @@ int dma_channel::wait_for_transfer() {
 		}
 		ch.in_progress_count--;
 		ch.counter++;
-		printf("Finish transfer for DMA buffer %d devnode %s # completed transfers %d\n", ch.buffer_id, config.devnode.c_str(), ch.counter);
+		// printf("Finish transfer for DMA buffer %d devnode %s # completed transfers %d\n", ch.buffer_id, config.devnode.c_str(), ch.counter);
 	}
 	// ch.buffer_id = ch.counter % ch.buffer_count;
 	return 0;

@@ -48,7 +48,7 @@ int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t
 
     int16_t * buf16[8];
     for (int ch = 0; ch < 8; ch++) {
-        buf16[ch] = (int16_t *)buffers[ch];
+        buf16[ch] = (int16_t *)buffers[7 - ch];
     }
 
     size_t sample_count = 0;

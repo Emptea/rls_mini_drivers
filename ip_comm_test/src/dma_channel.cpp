@@ -23,12 +23,14 @@ static void print_work(void * data) {
 static void print_hdr(void * data) {
 	struct header * hdr = (struct header *)data;
 
-	piCout << "Delimiter" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << "0x"
-		   << PICoutManipulators::PICoutFormat::Hex << hdr->del_high << "_x" << hdr->del_low;
+	PICout(PICoutManipulators::AddNone) << "Delimiter" << PICoutManipulators::PICoutSpecialChar::Tab
+										<< PICoutManipulators::PICoutSpecialChar::Tab << " 0x" << PICoutManipulators::PICoutFormat::Hex
+										<< hdr->del_high << "_" << hdr->del_low << PICoutManipulators::PICoutSpecialChar::NewLine;
 	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 		   << hdr->packet_number;
 	piCout << "Timestamp" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->timestamp;
-	piCout << "Channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->channel;
+	piCout << "Channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << hdr->channel;
 	piCout << "Test point" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->tp
 		   << PICoutManipulators::PICoutSpecialChar::NewLine;
 
@@ -38,7 +40,7 @@ static void print_hdr(void * data) {
 }
 
 void dma_channel::save_buf_to_file(void * buffer, int N) {
-	piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
+	// piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
 	const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
 	if (dump_file == nullptr) {
 		piCout << "ERROR: dump_file is NULL, cannot save";

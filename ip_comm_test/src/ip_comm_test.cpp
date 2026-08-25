@@ -186,10 +186,12 @@ int main(int argc, char * argv[]) {
 	int buf_size             = BUFFER_SIZE;
 	// uint32_t num_transfers   = 16;
 	uint32_t n_samps_per_buf = 141;
+	uint32_t num_rx_transfer = num_transfers * N_PACKS_IN_TX_BUF;
 
 	switch (test_point) {
 	case TP_WORK: {
 		n_samps_per_buf = sizeof(work_data);
+		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
 	case TP_BYPASS: {
@@ -199,21 +201,24 @@ int main(int argc, char * argv[]) {
 	case TP_CUT:
 	case TP_FAPCH:
 	case TP_LOU:
-	case TP_SF:
-	case TP_MAX: {
+	case TP_SF: {
 		n_samps_per_buf = 141;
 		break;
 	}
-	case TP_DDR: {
-		n_samps_per_buf = 512;
-		break;
-	}
+	case TP_DDR:
 	case TP_FFT: {
 		n_samps_per_buf = 512;
+		num_rx_transfer = num_rx_transfer / 20;
+		break;
+	}
+	case TP_MAX: {
+		n_samps_per_buf = 141;
+		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
 	case TP_FIND: {
 		n_samps_per_buf = 423;
+		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
 	default: {
@@ -240,7 +245,7 @@ int main(int argc, char * argv[]) {
 	piCout << "Wait for DMA init";
 	dma_channels[0]->init(rx_config);
 	dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
-	dma_channels[0]->set_num_transfers(num_transfers * N_PACKS_IN_TX_BUF);
+	dma_channels[0]->set_num_transfers(num_rx_transfer);
 	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
 		rx_buffers[i] = dma_channels[0]->get_buffer(i);
 	}

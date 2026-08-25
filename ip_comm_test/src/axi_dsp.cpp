@@ -220,6 +220,7 @@ csr_output_source_t axi_dsp_get_output_source()
     axi_read(&raw, CSR_OUTPUT_SOURCE_ADDR);
     src.SOURCE = (raw & CSR_OUTPUT_SOURCE_SOURCE_MASK) >> CSR_OUTPUT_SOURCE_SOURCE_LSB;
     src.SOURCE_CHANNEL = (raw & CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_MASK) >> CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_LSB;
+    src.RANGE_GATE = (raw & CSR_OUTPUT_SOURCE_RANGE_GATE_MASK) >> CSR_OUTPUT_SOURCE_RANGE_GATE_LSB;
 
     return src;
 }
@@ -339,13 +340,13 @@ void axi_dsp_set_diagram_angle(float angle, uint32_t channel)
     write_angle(angle, CSR_DIAGRAM_ANGLE_0_ADDR + (channel * 4));
 }
 
-void axi_dsp_set_output_source(uint32_t src, uint32_t src_channel)
+void axi_dsp_set_output_source(uint32_t src, uint32_t src_channel, uint32_t range_gate)
 {
     union {
         csr_output_source_t src;
         uint32_t raw;
     } source_un = {
-        .src{.SOURCE = src, .SOURCE_CHANNEL = src_channel}
+        .src{.SOURCE = src, .SOURCE_CHANNEL = src_channel, .RANGE_GATE = range_gate}
     };
 
     axi_write(source_un.raw, CSR_OUTPUT_SOURCE_ADDR);

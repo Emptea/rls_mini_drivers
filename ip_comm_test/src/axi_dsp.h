@@ -69,7 +69,7 @@ void axi_dsp_set_diagram_6(cmplx_f64 diagram, uint32_t channel);
 void axi_dsp_set_diagram_7(cmplx_f64 diagram, uint32_t channel);
 void axi_dsp_set_motion_selector(uint32_t filter, uint32_t onoff);
 void axi_dsp_set_diagram_angle(float angle, uint32_t channel);
-void axi_dsp_set_output_source(uint32_t src, uint32_t src_channel);
+void axi_dsp_set_output_source(uint32_t src, uint32_t src_channel, uint32_t range_gate);
 void axi_dsp_set_apu_rank(uint32_t rank, uint32_t window);
 void axi_dsp_set_detector_level(uint32_t level, uint32_t num);
 void axi_dsp_set_azimuth_angle(float angle);

@@ -1661,7 +1661,9 @@ typedef struct {
 #define CSR_OUTPUT_SOURCE_RESET 0x0
 typedef struct {
     uint32_t SOURCE : 16; // Source for output data
-    uint32_t SOURCE_CHANNEL : 16; // Source channel for output data (if exists)
+    uint32_t SOURCE_CHANNEL : 3; // Source channel for output data (if exists)
+    uint32_t RANGE_GATE : 8; // Range gate for output data (if exists)
+    uint32_t PADDING : 5;
 } csr_output_source_t;
 
 // output_source.source - Source for output data
@@ -1671,10 +1673,21 @@ typedef struct {
 #define CSR_OUTPUT_SOURCE_SOURCE_RESET 0x0
 
 // output_source.source_channel - Source channel for output data (if exists)
-#define CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_WIDTH 16
+#define CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_WIDTH 3
 #define CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_LSB 16
-#define CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_MASK 0xffff0000
+#define CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_MASK 0x00070000
 #define CSR_OUTPUT_SOURCE_SOURCE_CHANNEL_RESET 0x0
+
+// output_source.range_gate - Range gate for output data (if exists)
+#define CSR_OUTPUT_SOURCE_RANGE_GATE_WIDTH 8
+#define CSR_OUTPUT_SOURCE_RANGE_GATE_LSB 19
+#define CSR_OUTPUT_SOURCE_RANGE_GATE_MASK 0x00F80000
+#define CSR_OUTPUT_SOURCE_RANGE_GATE_RESET 0x0
+
+// output_source.padding - Padding
+#define CSR_OUTPUT_SOURCE_PADDING_WIDTH 5
+#define CSR_OUTPUT_SOURCE_PADDING_LSB 27
+#define CSR_OUTPUT_SOURCE_PADDING_MASK 0xF8000000
 
 // apu_rank - 
 #define CSR_APU_RANK_ADDR 0x15c

@@ -37,7 +37,7 @@ namespace fs = std::filesystem;
 
 int main(int argc, char * argv[]) {
 	if (argc < 5) {
-		printf("usage: %s <test_point> <channel> <num_transfers> <input_file> <output_file>\n", argv[0]);
+		printf("usage: %s <test_point> <channel> <range_gate> <num_transfers> <input_file> <output_file>\n", argv[0]);
 		return 1;
 	}
 
@@ -66,15 +66,16 @@ int main(int argc, char * argv[]) {
 
 	uint32_t test_point      = (uint32_t)strtol(argv[1], NULL, 0);
 	uint32_t channel         = (uint32_t)strtol(argv[2], NULL, 0);
-	uint32_t num_transfers   = (uint32_t)strtol(argv[3], NULL, 0);
-	const char * input_file  = argv[4];
-	PIString output_file = dir_path_str + "/" + argv[5]; // File to dump RX data (optional, can be empty string)
+	uint32_t range_gate   = (uint32_t)strtol(argv[3], NULL, 0);
+	uint32_t num_transfers   = (uint32_t)strtol(argv[4], NULL, 0);
+	const char * input_file  = argv[5];
+	PIString output_file = dir_path_str + "/" + argv[6]; // File to dump RX data (optional, can be empty string)
 
 	axi_dsp_init();
 	axi_dsp_kill();
-	axi_dsp_set_output_source(test_point, channel);
+	axi_dsp_set_output_source(test_point, channel, range_gate);
 	auto v = axi_dsp_get_output_source();
-	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << "\n";
+	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << ", RANGE_GATE: " << v.RANGE_GATE << "\n";
 	cmplx_f64 manual_comp   = {.real = 1, .imag = 0};
 	cmplx_f64 diagrams_even = {.real = 1, .imag = 0};
 	cmplx_f64 diagrams_odd  = {.real = 0, .imag = 1};
@@ -187,6 +188,10 @@ int main(int argc, char * argv[]) {
 	uint32_t n_samps_per_buf = 141;
 
 	switch (test_point) {
+	case TP_WORK: {
+		n_samps_per_buf = N_SAMPS_IN_TX_BUF;
+		break;
+	}
 	case TP_BYPASS: {
 		n_samps_per_buf = N_SAMPS_IN_TX_BUF;
 		break;

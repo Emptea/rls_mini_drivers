@@ -6,6 +6,37 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+static void print_work(void * data) {
+	struct work_data * work = (struct work_data *)data;
+
+	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << work->packet_number;
+	piCout << "Range" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->range;
+	piCout << "Main amplitude at sample" << work->main_diagram_number << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << work->main_amplitude;
+	piCout << "Neighbour amplitude at sample" << work->main_diagram_number - 1 + 2 * work->neighbor_diagram_side
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->neighbor_amplitude;
+	piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << work->frequency_channel << PICoutManipulators::PICoutSpecialChar::NewLine;
+}
+
+static void print_hdr(void * data) {
+	struct header * hdr = (struct header *)data;
+
+	piCout << "Delimiter" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << "0x"
+		   << PICoutManipulators::PICoutFormat::Hex << hdr->del_high << "_x" << hdr->del_low;
+	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << hdr->packet_number;
+	piCout << "Timestamp" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->timestamp;
+	piCout << "Channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->channel;
+	piCout << "Test point" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->tp
+		   << PICoutManipulators::PICoutSpecialChar::NewLine;
+
+		if (hdr->tp == TP_WORK) {
+		print_work((uint32_t *)data + HDR_SIZE);
+	}
+}
+
 void dma_channel::save_buf_to_file(void * buffer, int N) {
 	piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
 	const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
@@ -101,6 +132,7 @@ int dma_channel::wait_for_transfer() {
 		}
 
 		if (flag_save_buf) {
+			print_hdr(ch.buf_ptr->buffers[ch.buffer_id].buffer);
 			save_buf_to_file(ch.buf_ptr->buffers[ch.buffer_id].buffer, n_samps_per_buf);
 		}
 		ch.in_progress_count--;

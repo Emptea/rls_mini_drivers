@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dma-proxy.h"
+#include "axi_dsp.h"
 
 #include <cstdint>
 #include <piprotectedvariable.h>

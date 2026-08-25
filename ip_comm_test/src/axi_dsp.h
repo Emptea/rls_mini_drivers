@@ -1,33 +1,62 @@
 #ifndef AXI_DSP_H
 #define AXI_DSP_H
-#include <stdint.h>
 #include "regs.h"
 
+#include <stdint.h>
+
 enum fd_err {
-    FD_ERR_NONE,
-    FD_ERR_WRITE,
-    FD_ERR_READ,
-    FD_ERR_NO_DEVICE,
+	FD_ERR_NONE,
+	FD_ERR_WRITE,
+	FD_ERR_READ,
+	FD_ERR_NO_DEVICE,
 };
 
 enum tp {
-        TP_WORK = 0,
-        TP_BYPASS = 1,
-        TP_CUT = 2,
-        TP_FAPCH = 3,
-        TP_LOU = 4,
-        TP_SF = 5,
+	TP_WORK   = 0,
+	TP_BYPASS = 1,
+	TP_CUT    = 2,
+	TP_FAPCH  = 3,
+	TP_LOU    = 4,
+	TP_SF     = 5,
+	TP_DDR    = 6,
+	TP_FFT    = 7,
+	TP_MAX    = 8,
+	TP_FIND   = 9,
 };
 
 typedef struct {
-    uint32_t REAL :16; // Real part, signed 2s complement, 2**14 = 1.0
-    uint32_t IMAG :16; // Imaginary part, signed 2s complement, 2**14 = 1.0
+	uint32_t REAL: 16; // Real part, signed 2s complement, 2**14 = 1.0
+	uint32_t IMAG: 16; // Imaginary part, signed 2s complement, 2**14 = 1.0
 } cmplx_i32;
 
 typedef struct {
-    float real;
-    float imag;
+	float real;
+	float imag;
 } cmplx_f64;
+
+#pragma pack(push, 1)
+struct work_data {
+	uint32_t packet_number;
+	uint8_t range: 8;
+	uint32_t main_amplitude;
+	uint32_t neighbor_amplitude;
+	uint16_t main_diagram_number  : 3;
+	uint16_t neighbor_diagram_side: 1;
+	uint16_t frequency_channel    : 9;
+	uint16_t padding              : 3;
+} __attribute__((packed));
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct header {
+	uint32_t del_high;
+	uint32_t del_low;
+	uint32_t packet_number;
+	uint64_t timestamp;
+	uint32_t channel: 16;
+	uint32_t tp     : 16;
+} __attribute__((packed));
+#pragma pack(pop)
 
 uint32_t axi_dsp_init();
 void axi_dsp_deinit();

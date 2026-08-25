@@ -13,6 +13,7 @@
 
 #define N_SAMPS_IN_TX_BUF 232
 #define N_PACKS_IN_TX_BUF 4
+#define HDR_SIZE 6
 
 class dma_channel: public PIThread {
 	PIOBJECT_SUBCLASS(dma_channel, PIThread)

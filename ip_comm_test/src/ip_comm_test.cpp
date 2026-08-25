@@ -78,16 +78,105 @@ int main(int argc, char * argv[]) {
 	cmplx_f64 manual_comp   = {.real = 1, .imag = 0};
 	cmplx_f64 diagrams_even = {.real = 1, .imag = 0};
 	cmplx_f64 diagrams_odd  = {.real = 0, .imag = 1};
+
+	cmplx_f64 diagrams_0_all[8] = {
+		{.real =  0.5250, .imag =  0.8511},
+		{.real =  0.7470, .imag =  0.6648},
+		{.real =  0.9063, .imag =  0.4226},
+		{.real =  0.9894, .imag =  0.1449},
+		{.real =  0.9894, .imag = -0.1449},
+		{.real =  0.9063, .imag = -0.4226},
+		{.real =  0.7470, .imag = -0.6648},
+		{.real =  0.5250, .imag = -0.8511},
+	};
+
+	cmplx_f64 diagrams_1_all[8] = {
+		{.real = -0.9925, .imag =  0.1220},
+		{.real = -0.5529, .imag =  0.8333},
+		{.real =  0.2733, .imag =  0.9619},
+		{.real =  0.9084, .imag =  0.4181},
+		{.real =  0.9084, .imag = -0.4181},
+		{.real =  0.2733, .imag = -0.9619},
+		{.real = -0.5529, .imag = -0.8333},
+		{.real = -0.9925, .imag = -0.1220},
+	};
+
+	cmplx_f64 diagrams_2_all[8] = {
+		{.real =   0.2031, .imag = -0.9792},
+		{.real =  -0.9321, .imag = -0.3621},
+		{.real =  -0.5111, .imag =  0.8595},
+		{.real =   0.7633, .imag =  0.6461},
+		{.real =   0.7633, .imag = -0.6461},
+		{.real =  -0.5111, .imag = -0.8595},
+		{.real =  -0.9321, .imag =  0.3621},
+		{.real =   0.2031, .imag =  0.9792},
+	};
+
+	cmplx_f64 diagrams_3_all[8] = {
+		{.real =   0.9349, .imag =  0.3549},
+		{.real =   0.0347, .imag = -0.9994},
+		{.real =  -0.9573, .imag =  0.2891},
+		{.real =   0.5821, .imag =  0.8131},
+		{.real =   0.5821, .imag = -0.8131},
+		{.real =  -0.9573, .imag = -0.2891},
+		{.real =   0.0347, .imag =  0.9994},
+		{.real =   0.9349, .imag = -0.3549},
+	};
+
+	cmplx_f64 diagrams_4_all[8] = {
+		{.real =  -0.2890, .imag =  0.9573},
+		{.real =   0.8944, .imag = -0.4473},
+		{.real =  -0.9394, .imag = -0.3430},
+		{.real =   0.3958, .imag =  0.9183},
+		{.real =   0.3958, .imag = -0.9183},
+		{.real =  -0.9394, .imag =  0.3430},
+		{.real =   0.8944, .imag =  0.4473},
+		{.real =  -0.2890, .imag = -0.9573},
+	};
+
+	cmplx_f64 diagrams_5_all[8] = {
+		{.real =  -0.9984, .imag =  0.0558},
+		{.real =   0.9175, .imag =  0.3977},
+		{.real =  -0.6420, .imag = -0.7667},
+		{.real =   0.2303, .imag =  0.9731},
+		{.real =   0.2303, .imag = -0.9731},
+		{.real =  -0.6420, .imag =  0.7667},
+		{.real =   0.9175, .imag = -0.3977},
+		{.real =  -0.9984, .imag = -0.0558},
+	};
+
+	cmplx_f64 diagrams_6_all[8] = {
+		{.real =  -0.6639, .imag = -0.7478},
+		{.real =   0.4957, .imag =  0.8685},
+		{.real =  -0.3062, .imag = -0.9520},
+		{.real =   0.1035, .imag =  0.9946},
+		{.real =   0.1035, .imag = -0.9946},
+		{.real =  -0.3062, .imag =  0.9520},
+		{.real =   0.4957, .imag = -0.8685},
+		{.real =  -0.6639, .imag =  0.7478},
+	};
+
+	cmplx_f64 diagrams_7_all[8] = {
+		{.real =  -0.1767, .imag = -0.9843},
+		{.real =   0.1265, .imag =  0.9920},
+		{.real =  -0.0761, .imag = -0.9971},
+		{.real =   0.0254, .imag =  0.9997},
+		{.real =   0.0254, .imag = -0.9997},
+		{.real =  -0.0761, .imag =  0.9971},
+		{.real =   0.1265, .imag = -0.9920},
+		{.real =  -0.1767, .imag =  0.9843},
+	};
+
 	for (size_t i = 0; i < NUM_CHANNELS_TX; i++) {
 		axi_dsp_set_manual_compensation(manual_comp, i);
-		axi_dsp_set_diagram_0(diagrams_even, i);
-		axi_dsp_set_diagram_1(diagrams_odd, i);
-		axi_dsp_set_diagram_2(diagrams_even, i);
-		axi_dsp_set_diagram_3(diagrams_odd, i);
-		axi_dsp_set_diagram_4(diagrams_even, i);
-		axi_dsp_set_diagram_5(diagrams_odd, i);
-		axi_dsp_set_diagram_6(diagrams_even, i);
-		axi_dsp_set_diagram_7(diagrams_odd, i);
+		axi_dsp_set_diagram_0(diagrams_0_all[i], i);
+		axi_dsp_set_diagram_1(diagrams_1_all[i], i);
+		axi_dsp_set_diagram_2(diagrams_2_all[i], i);
+		axi_dsp_set_diagram_3(diagrams_3_all[i], i);
+		axi_dsp_set_diagram_4(diagrams_4_all[i], i);
+		axi_dsp_set_diagram_5(diagrams_5_all[i], i);
+		axi_dsp_set_diagram_6(diagrams_6_all[i], i);
+		axi_dsp_set_diagram_7(diagrams_7_all[i], i);
 	}
 	axi_dsp_set_compensation_mode(0);
 	axi_dsp_set_compensation_ref(1e-3);
@@ -111,6 +200,7 @@ int main(int argc, char * argv[]) {
 		break;
 	}
 	}
+	n_samps_per_buf += HDR_SIZE;
 
 	PIVector<dma_channel *> dma_channels;
 
@@ -165,7 +255,7 @@ int main(int argc, char * argv[]) {
 			misc_read_8chs_from_file(input_file, current_buffers, buf_size*TX_BUFFER_COUNT,  buf_size / sizeof(unsigned int) * TX_BUFFER_COUNT * cnt);
 			cnt++;
 		}
-
+		
 		size_t offset = i * n_samps_per_buf * N_PACKS_IN_TX_BUF;
 		PISystemTime t0_send, t1_send;
 		t0_send = PISystemTime::current();

@@ -41,17 +41,22 @@ static void print_hdr(void * data) {
 
 void dma_channel::save_buf_to_file(void * buffer, int N) {
 	// piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
-	const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
+	// const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
+	const uint32_t * buf32 = reinterpret_cast<const uint32_t *>(buffer);
 	if (dump_file == nullptr) {
 		piCout << "ERROR: dump_file is NULL, cannot save";
 		return;
 	}
 
-	size_t num_int16 = N * 2;
-	for (size_t i = 0; i < num_int16; i += 2) {
-		if (i + 1 >= num_int16) break;
-		fprintf(dump_file, "%04X%04X\n", (uint16_t)buf16[i], (uint16_t)buf16[i + 1]);
+	// size_t num_int16 = N * 2;
+	// for (size_t i = 0; i < num_int16; i += 2) {
+	// 	if (i + 1 >= num_int16) break;
+	// 	fprintf(dump_file, "%04X%04X\n", (uint16_t)buf16[i + 1], (uint16_t)buf16[i]);
+	// }
+	for (size_t i = 0; i < N; i++) {
+		fprintf(dump_file, "%08X\n", buf32[i]);
 	}
+
 
 	// Flush periodically
 	if (ch.counter % 10 == 0) fflush(dump_file);

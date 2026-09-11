@@ -8,21 +8,24 @@
 
 static void print_work(void * data) {
 	struct work_posthdr * work = (struct work_posthdr *)data;
-	// struct work_packet * work = (struct work_packet *)data;
 
 	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->packet_number;
 	piCout << "Number of obnaruzhenie" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->n_work_packets;
-	// piCout << "Range" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-	// 	   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-	// 	   << PICoutManipulators::PICoutSpecialChar::Tab << work->range;
-	// piCout << "Main amplitude at sample" << work->main_diagram_number << PICoutManipulators::PICoutSpecialChar::Tab
-	// 	   << PICoutManipulators::PICoutSpecialChar::Tab << work->main_amplitude;
-	// piCout << "Neighbour amplitude at sample" << work->main_diagram_number - 1 + 2 * work->neighbor_diagram_side
-	// 	   << PICoutManipulators::PICoutSpecialChar::Tab << work->neighbor_amplitude;
-	// piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-	// 	   << PICoutManipulators::PICoutSpecialChar::Tab << work->frequency_channel << PICoutManipulators::PICoutSpecialChar::NewLine;
+	const struct work_packet * packets = reinterpret_cast<const struct work_packet *>(work + 1);
+	for (uint32_t i = 0; i < work->n_work_packets; ++i) {
+		const struct work_packet & packet = packets[i];
+		piCout << "Work packet" << PICoutManipulators::PICoutSpecialChar::Tab << i + 1;
+		piCout << "Range" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << static_cast<unsigned int>(packet.range);
+		piCout << "Main amplitude at sample" << packet.main_diagram_number << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.main_amplitude;
+		piCout << "Neighbour amplitude at sample" << packet.main_diagram_number - 1 + 2 * packet.neighbor_diagram_side
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.neighbor_amplitude;
+		piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << packet.frequency_channel << PICoutManipulators::PICoutSpecialChar::NewLine;
+	}
 }
 
 static void print_hdr(void * data) {

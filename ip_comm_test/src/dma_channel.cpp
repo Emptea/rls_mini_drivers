@@ -147,8 +147,17 @@ int dma_channel::wait_for_transfer() {
 		}
 
 		if (flag_save_buf) {
-			print_hdr(ch.buf_ptr->buffers[ch.buffer_id].buffer);
-			save_buf_to_file(ch.buf_ptr->buffers[ch.buffer_id].buffer, n_samps_per_buf);
+			auto * buffer = ch.buf_ptr->buffers[ch.buffer_id].buffer;
+			const auto * hdr = reinterpret_cast<const struct header *>(buffer);
+			int n_samps_to_save = n_samps_per_buf;
+			if (hdr->tp == TP_WORK) {
+				const auto * work = reinterpret_cast<const struct work_posthdr *>(
+					reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
+				// save_buf_to_file expects a count of 32-bit words.
+				n_samps_to_save = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
+			}
+			print_hdr(buffer);
+			save_buf_to_file(buffer, n_samps_to_save);
 		}
 		ch.in_progress_count--;
 		ch.counter++;

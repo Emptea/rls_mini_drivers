@@ -180,7 +180,10 @@ int main(int argc, char * argv[]) {
 		axi_dsp_set_diagram_7(diagrams_7_all[i], i);
 	}
 	axi_dsp_set_compensation_mode(0);
-	axi_dsp_set_compensation_ref(1e-3);
+	axi_dsp_set_compensation_ref((float)0.0157);
+	axi_dsp_set_apu_rank(10, 15);
+	axi_dsp_set_detector_level(36, 0);
+	axi_dsp_set_detector_level(0, 1);
 	axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;
@@ -190,7 +193,7 @@ int main(int argc, char * argv[]) {
 
 	switch (test_point) {
 	case TP_WORK: {
-		n_samps_per_buf = sizeof(work_data);
+		n_samps_per_buf = sizeof(work_posthdr);
 		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
@@ -211,13 +214,15 @@ int main(int argc, char * argv[]) {
 		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
-	case TP_MAX: {
+	case TP_MAX:
+	case TP_RANK:
+	case TP_APU: {
 		n_samps_per_buf = 141;
 		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
 	case TP_FIND: {
-		n_samps_per_buf = 423;
+		n_samps_per_buf = 141 * 5;
 		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}

@@ -366,7 +366,7 @@ void axi_dsp_set_apu_rank(uint32_t rank, uint32_t window)
 
 void axi_dsp_set_detector_level(uint32_t level, uint32_t num)
 {
-    axi_write(level, CSR_DETECTOR_LEVEL_0_ADDR + (num * 4));
+	axi_write(level * (1 << 24), CSR_DETECTOR_LEVEL_0_ADDR + (num * 4));
 }
 
 void axi_dsp_set_azimuth_angle(float angle)

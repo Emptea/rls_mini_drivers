@@ -22,6 +22,8 @@ enum tp {
 	TP_FFT    = 7,
 	TP_MAX    = 8,
 	TP_FIND   = 9,
+	TP_RANK   = 10,
+	TP_APU    = 11,
 };
 
 typedef struct {
@@ -35,15 +37,21 @@ typedef struct {
 } cmplx_f64;
 
 #pragma pack(push, 1)
-struct work_data {
-	uint32_t packet_number;
-	uint8_t range: 8;
+struct work_packet {
 	uint32_t main_amplitude;
 	uint32_t neighbor_amplitude;
+	uint8_t range                 : 8;
 	uint16_t main_diagram_number  : 3;
 	uint16_t neighbor_diagram_side: 1;
 	uint16_t frequency_channel    : 9;
-	uint16_t padding              : 3;
+	uint16_t padding              : 11;
+} __attribute__((packed));
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct work_posthdr {
+	uint32_t packet_number;
+	uint32_t n_work_packets;
 } __attribute__((packed));
 #pragma pack(pop)
 

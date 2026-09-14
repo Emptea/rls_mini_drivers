@@ -203,7 +203,10 @@ int main(int argc, char * argv[]) {
 	}
 	case TP_CUT:
 	case TP_FAPCH:
-	case TP_LOU:
+	case TP_LOU: {
+		n_samps_per_buf = 164;
+		break; 
+	}
 	case TP_SF: {
 		n_samps_per_buf = 141;
 		break;

@@ -11,35 +11,44 @@ static void print_work(void * data) {
 
 	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->packet_number;
-	piCout << "Number of obnaruzhenie" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->n_work_packets;
+	piCout << "Number of detections" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << work->n_work_packets;
+
 	const struct work_packet * packets = reinterpret_cast<const struct work_packet *>(work + 1);
 	for (uint32_t i = 0; i < work->n_work_packets; ++i) {
 		const struct work_packet & packet = packets[i];
-		piCout << "Work packet" << PICoutManipulators::PICoutSpecialChar::Tab << i + 1;
+		piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
+		piCout << "Work packet" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << i + 1;
 		piCout << "Range" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << static_cast<unsigned int>(packet.range);
+			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << static_cast<unsigned int>(packet.range);
 		piCout << "Main amplitude at sample" << packet.main_diagram_number << PICoutManipulators::PICoutSpecialChar::Tab
 			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.main_amplitude;
 		piCout << "Neighbour amplitude at sample" << packet.main_diagram_number - 1 + 2 * packet.neighbor_diagram_side
-			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.neighbor_amplitude;
+			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << packet.neighbor_amplitude;
 		piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << packet.frequency_channel << PICoutManipulators::PICoutSpecialChar::NewLine;
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.frequency_channel;
 	}
+	piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
 }
 
 static void print_hdr(void * data) {
 	struct header * hdr = (struct header *)data;
 
 	PICout(PICoutManipulators::AddNone) << "Delimiter" << PICoutManipulators::PICoutSpecialChar::Tab
+										<< PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 										<< PICoutManipulators::PICoutSpecialChar::Tab << " 0x" << PICoutManipulators::PICoutFormat::Hex
 										<< hdr->del_high << "_" << hdr->del_low << PICoutManipulators::PICoutSpecialChar::NewLine;
 	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << hdr->packet_number;
-	piCout << "Timestamp" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->timestamp;
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->packet_number;
+	piCout << "Timestamp" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->timestamp;
 	piCout << "Channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 		   << PICoutManipulators::PICoutSpecialChar::Tab << hdr->channel;
-	piCout << "Test point" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->tp
+	piCout << "Test point" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->tp
 		   << PICoutManipulators::PICoutSpecialChar::NewLine;
 
 	if (hdr->tp == TP_WORK) {
@@ -147,14 +156,13 @@ int dma_channel::wait_for_transfer() {
 		}
 
 		if (flag_save_buf) {
-			auto * buffer = ch.buf_ptr->buffers[ch.buffer_id].buffer;
-			const auto * hdr = reinterpret_cast<const struct header *>(buffer);
+			auto * buffer       = ch.buf_ptr->buffers[ch.buffer_id].buffer;
+			const auto * hdr    = reinterpret_cast<const struct header *>(buffer);
 			int n_samps_to_save = n_samps_per_buf;
 			if (hdr->tp == TP_WORK) {
-				const auto * work = reinterpret_cast<const struct work_posthdr *>(
-					reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
+				const auto * work = reinterpret_cast<const struct work_posthdr *>(reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
 				// save_buf_to_file expects a count of 32-bit words.
-				n_samps_to_save = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
+				n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
 			}
 			print_hdr(buffer);
 			save_buf_to_file(buffer, n_samps_to_save);

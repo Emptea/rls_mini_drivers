@@ -121,7 +121,7 @@ int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t
 		}
 	}
 
-	printf("Loaded %zu samples (skipped %zu) from %s\n", sample_count, samples_skipped, filename);
+	// printf("Loaded %zu samples (skipped %zu) from %s\n", sample_count, samples_skipped, filename);
 	return 0;
 }
 

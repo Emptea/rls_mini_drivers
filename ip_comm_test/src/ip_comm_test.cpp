@@ -295,7 +295,7 @@ int main(int argc, char * argv[]) {
 			dma_channels[k]->start_transfer();
 		}
 		t1_send = PISystemTime::current();
-		piCout << "start transfer - exit from start transfer time = " << t1_send - t0_send;
+		// piCout << "start transfer - exit from start transfer time = " << t1_send - t0_send;
 
 		PISystemTime t0, t1;
 		125_us .sleep();
@@ -306,7 +306,7 @@ int main(int argc, char * argv[]) {
 			// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
 		}
 		t1 = PISystemTime::current();
-		piCout << "start wait - stop transfer time = " << t1 - t0;
+		// piCout << "start wait - stop transfer time = " << t1 - t0;
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
 	}
 	dma_channels[0]->waitForFinish();

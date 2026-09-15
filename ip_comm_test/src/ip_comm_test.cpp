@@ -229,6 +229,10 @@ int main(int argc, char * argv[]) {
 		num_rx_transfer = num_rx_transfer / 20;
 		break;
 	}
+	case TP_FAPCH_COEFFS: {
+		n_samps_per_buf = 8;
+		break;
+	}
 	default: {
 		break;
 	}

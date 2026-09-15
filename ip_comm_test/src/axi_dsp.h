@@ -24,6 +24,7 @@ enum tp {
 	TP_FIND   = 9,
 	TP_RANK   = 10,
 	TP_APU    = 11,
+	TP_FAPCH_COEFFS = 12,
 };
 
 typedef struct {

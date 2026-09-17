@@ -380,6 +380,11 @@ void axi_dsp_set_compensation_ref(float ref)
     axi_write(ref_i16, CSR_COMPENSATION_REFERENCE_ADDR);
 }
 
+void axi_dsp_set_compensation_ref(uint32_t ref)
+{
+    axi_write(ref, CSR_COMPENSATION_REFERENCE_ADDR);
+}
+
 void axi_dsp_kill()
 {
     axi_write(0, CSR_KILL_ADDR);

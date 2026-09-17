@@ -112,6 +112,7 @@ void axi_dsp_set_apu_rank(uint32_t rank, uint32_t window);
 void axi_dsp_set_detector_level(uint32_t level, uint32_t num);
 void axi_dsp_set_azimuth_angle(float angle);
 void axi_dsp_set_compensation_ref(float ref);
+void axi_dsp_set_compensation_ref(uint32_t ref);
 
 void axi_dsp_kill();
 void axi_dsp_apply();

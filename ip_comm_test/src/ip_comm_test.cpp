@@ -180,7 +180,7 @@ int main(int argc, char * argv[]) {
 		axi_dsp_set_diagram_7(diagrams_7_all[i], i);
 	}
 	axi_dsp_set_compensation_mode(0);
-	axi_dsp_set_compensation_ref((float)0.0157);
+	axi_dsp_set_compensation_ref(1575);
 	axi_dsp_set_apu_rank(10, 15);
 	axi_dsp_set_detector_level(36, 0);
 	axi_dsp_set_detector_level(0, 1);

@@ -134,17 +134,7 @@ csr_ip_ver_t axi_dsp_get_ip_ver()
 
 uint32_t axi_dsp_get_kill()
 {
-    return read_u32(CSR_KILL_ADDR);
-}
-
-uint32_t axi_dsp_get_test_point()
-{
-    return read_u32(CSR_TEST_POINT_ADDR);
-}
-
-uint32_t axi_dsp_get_channel()
-{
-    return read_u32(CSR_CHANNEL_ADDR);
+	return read_u32(CSR_RESET_ADDR);
 }
 
 uint32_t axi_dsp_get_compensation_mode()
@@ -230,9 +220,9 @@ csr_apu_rank_t axi_dsp_get_apu_rank()
     uint32_t raw;
     csr_apu_rank_t apu_rank;
 
-    axi_read(&raw, CSR_OUTPUT_SOURCE_ADDR);
-    apu_rank.RANK = (raw & CSR_APU_RANK_RANK_MASK) >> CSR_APU_RANK_RANK_LSB;
-    apu_rank.WINDOW = (raw & CSR_APU_RANK_WINDOW_MASK) >> CSR_APU_RANK_WINDOW_LSB;
+	axi_read(&raw, CSR_APU_RANK_ADDR);
+	apu_rank.RANK   = (raw & CSR_APU_RANK_RANK_MASK) >> CSR_APU_RANK_RANK_LSB;
+	apu_rank.WINDOW = (raw & CSR_APU_RANK_WINDOW_MASK) >> CSR_APU_RANK_WINDOW_LSB;
 
     return apu_rank;
 }
@@ -262,16 +252,11 @@ uint32_t axi_dsp_get_apply()
     return read_u32(CSR_APPLY_ADDR);
 }
 
-/* Setters */
-void axi_dsp_set_test_point(uint32_t tp)
-{
-    axi_write(tp, CSR_TEST_POINT_ADDR);
+uint32_t axi_dsp_get_channel_mask() {
+	uint32_t raw = read_u32(CSR_CHANNEL_MASK_ADDR);
+	return (raw & CSR_CHANNEL_MASK_CHANNEL_MASK_ENABLE_MASK) >> CSR_CHANNEL_MASK_CHANNEL_MASK_ENABLE_LSB;
 }
 
-void axi_dsp_set_channel(uint32_t channel)
-{
-    axi_write(channel, CSR_CHANNEL_ADDR);
-}
 
 void axi_dsp_set_compensation_mode(uint32_t compensation_mode)
 {
@@ -385,10 +370,14 @@ void axi_dsp_set_compensation_ref(uint32_t ref)
     axi_write(ref, CSR_COMPENSATION_REFERENCE_ADDR);
 }
 
+void axi_dsp_set_channel_mask(uint32_t channel_mask) {
+	axi_write(channel_mask & CSR_CHANNEL_MASK_CHANNEL_MASK_ENABLE_MASK, CSR_CHANNEL_MASK_ADDR);
+}
+
 void axi_dsp_kill()
 {
-    axi_write(0, CSR_KILL_ADDR);
-    axi_write(1, CSR_KILL_ADDR);
+	axi_write(CSR_RESET_RESET, CSR_RESET_ADDR);
+	// axi_write(1, CSR_RESET_ADDR);
 }
 
 void axi_dsp_apply()
@@ -396,3 +385,4 @@ void axi_dsp_apply()
     uint32_t prev_apply = (!axi_dsp_get_apply()) & 0x01;
     axi_write(prev_apply, CSR_APPLY_ADDR);
 }
+

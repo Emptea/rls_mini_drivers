@@ -25,6 +25,7 @@ enum tp {
 	TP_RANK   = 10,
 	TP_APU    = 11,
 	TP_FAPCH_COEFFS = 12,
+	TP_WEIGHT_OUT   = 13,
 };
 
 typedef struct {
@@ -90,8 +91,9 @@ csr_output_source_t axi_dsp_get_output_source();
 csr_apu_rank_t axi_dsp_get_apu_rank();
 uint32_t axi_dsp_get_detector_level(uint32_t num);
 float axi_dsp_get_azimuth_angle();
-float axi_dsp_get_compensation_ref();
 uint32_t axi_dsp_get_apply();
+float axi_dsp_get_compensation_ref();
+uint32_t axi_dsp_get_channel_mask();
 
 void axi_dsp_set_test_point(uint32_t tp);
 void axi_dsp_set_channel(uint32_t channel);
@@ -113,6 +115,7 @@ void axi_dsp_set_detector_level(uint32_t level, uint32_t num);
 void axi_dsp_set_azimuth_angle(float angle);
 void axi_dsp_set_compensation_ref(float ref);
 void axi_dsp_set_compensation_ref(uint32_t ref);
+void axi_dsp_set_channel_mask(uint32_t channel_mask);
 
 void axi_dsp_kill();
 void axi_dsp_apply();

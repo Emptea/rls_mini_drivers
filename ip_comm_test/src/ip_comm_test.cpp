@@ -180,64 +180,58 @@ int main(int argc, char * argv[]) {
 		axi_dsp_set_diagram_7(diagrams_7_all[i], i);
 	}
 	axi_dsp_set_compensation_mode(0);
-	axi_dsp_set_compensation_ref(1575);
+	axi_dsp_set_compensation_ref((uint32_t)1575);
 	axi_dsp_set_apu_rank(10, 15);
 	axi_dsp_set_detector_level(36, 0);
 	axi_dsp_set_detector_level(0, 1);
+	axi_dsp_set_channel_mask(0xFF);
 	axi_dsp_apply();
 
 	int buf_size             = BUFFER_SIZE;
 	// uint32_t num_transfers   = 16;
-	uint32_t n_samps_per_buf = 141;
+	uint32_t n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 	uint32_t num_rx_transfer = num_transfers * N_PACKS_IN_TX_BUF;
 
 	switch (test_point) {
 	case TP_WORK: {
-		n_samps_per_buf = sizeof(work_posthdr);
-		num_rx_transfer = num_rx_transfer / 20;
+		n_samps_per_buf = sizeof(work_posthdr) + HDR_SIZE;
 		break;
 	}
 	case TP_BYPASS: {
-		n_samps_per_buf = N_SAMPS_IN_TX_BUF;
+		n_samps_per_buf = (N_SAMPS_IN_TX_BUF + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;
 	}
 	case TP_CUT:
 	case TP_FAPCH:
 	case TP_LOU: {
-		n_samps_per_buf = 164;
-		break; 
-	}
-	case TP_SF: {
-		n_samps_per_buf = 141;
+		n_samps_per_buf = (164 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;
 	}
-	case TP_DDR:
-	case TP_FFT: {
-		n_samps_per_buf = 512;
-		num_rx_transfer = num_rx_transfer / 20;
-		break;
-	}
+	case TP_SF:
 	case TP_MAX:
 	case TP_RANK:
 	case TP_APU: {
-		n_samps_per_buf = 141;
-		num_rx_transfer = num_rx_transfer / 20;
+		n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
+		break;
+	}
+	case TP_DDR:
+	case TP_FFT:
+	case TP_WEIGHT_OUT: {
+		n_samps_per_buf = 512 + HDR_SIZE;
 		break;
 	}
 	case TP_FIND: {
-		n_samps_per_buf = 141 * 5;
-		num_rx_transfer = num_rx_transfer / 20;
+		n_samps_per_buf = 141 * 5 + HDR_SIZE;
 		break;
 	}
 	case TP_FAPCH_COEFFS: {
-		n_samps_per_buf = 8;
+		n_samps_per_buf = (8 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;
 	}
 	default: {
 		break;
 	}
 	}
-	n_samps_per_buf += HDR_SIZE;
 
 	PIVector<dma_channel *> dma_channels;
 
@@ -257,7 +251,7 @@ int main(int argc, char * argv[]) {
 	piCout << "Wait for DMA init";
 	dma_channels[0]->init(rx_config);
 	dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
-	dma_channels[0]->set_num_transfers(num_rx_transfer);
+	dma_channels[0]->set_num_transfers(num_transfers);
 	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
 		rx_buffers[i] = dma_channels[0]->get_buffer(i);
 	}
@@ -312,7 +306,7 @@ int main(int argc, char * argv[]) {
 			dma_channels[k]->wait_for_transfer();
 			// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
 		}
-		t1 = PISystemTime::current();
+		t1      = PISystemTime::current();
 		// piCout << "start wait - stop transfer time = " << t1 - t0;
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
 	}

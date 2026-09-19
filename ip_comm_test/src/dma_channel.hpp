@@ -1,7 +1,7 @@
 #pragma once
 
-#include "dma-proxy.h"
 #include "axi_dsp.h"
+#include "dma-proxy.h"
 
 #include <cstdint>
 #include <piprotectedvariable.h>
@@ -11,10 +11,11 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 
-
-#define N_SAMPS_IN_TX_BUF 232
+#define N_SAMPS_IN_PACK   232
 #define N_PACKS_IN_TX_BUF 20
-#define HDR_SIZE 6
+#define N_SAMPS_IN_TX_BUF (N_SAMPS_IN_PACK * N_PACKS_IN_TX_BUF)
+#define TX_BUF_SIZE       (sizeof(unsigned int) * N_SAMPS_IN_TX_BUF)
+#define HDR_SIZE          6
 
 class dma_channel: public PIThread {
 	PIOBJECT_SUBCLASS(dma_channel, PIThread)
@@ -22,12 +23,12 @@ class dma_channel: public PIThread {
 private:
 	struct channel {
 		channel_contagious_buffer * buf_ptr = nullptr; // proxy‑driver ring
-		int fd                   = -1;
-		int buffer_size          = 0;
-		int counter              = 0;
-		int buffer_id            = 0;
-		int in_progress_count    = 0;
-		int buffer_count         = 1;
+		int fd                              = -1;
+		int buffer_size                     = 0;
+		int counter                         = 0;
+		int buffer_id                       = 0;
+		int in_progress_count               = 0;
+		int buffer_count                    = 1;
 	} ch;
 
 	int num_transfers  = 0;
@@ -91,8 +92,8 @@ public:
 	void set_num_transfers(int n_trans) { num_transfers = n_trans; }
 
 	void set_save_to_file(PIString f_name, int n_samps) {
-		flag_save_buf    = true;
-		n_samps_per_buf  = n_samps;
-		dump_file = fopen(f_name.data(), "w");
+		flag_save_buf   = true;
+		n_samps_per_buf = n_samps;
+		dump_file       = fopen(f_name.data(), "w");
 	}
 };

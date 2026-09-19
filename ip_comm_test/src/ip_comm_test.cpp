@@ -187,7 +187,6 @@ int main(int argc, char * argv[]) {
 	axi_dsp_set_channel_mask(0xFF);
 	axi_dsp_apply();
 
-	int buf_size             = BUFFER_SIZE;
 	// uint32_t num_transfers   = 16;
 	uint32_t n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 	uint32_t num_rx_transfer = num_transfers * N_PACKS_IN_TX_BUF;
@@ -247,7 +246,7 @@ int main(int argc, char * argv[]) {
 		{TX_DEV_CH0, TX_DEV_CH1, TX_DEV_CH2, TX_DEV_CH3, TX_DEV_CH4, TX_DEV_CH5, TX_DEV_CH6, TX_DEV_CH7};
 
 	dma_channel::ch_config rx_config = {.devnode = RX_DEV, .buffer_size = BUFFER_SIZE, .buffer_count = RX_BUFFER_COUNT};
-	dma_channel::ch_config tx_config = {.buffer_size = BUFFER_SIZE, .buffer_count = TX_BUFFER_COUNT};
+	dma_channel::ch_config tx_config = {.buffer_size = TX_BUF_SIZE, .buffer_count = TX_BUFFER_COUNT};
 	piCout << "Wait for DMA init";
 	dma_channels[0]->init(rx_config);
 	dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
@@ -284,8 +283,8 @@ int main(int argc, char * argv[]) {
 		if (!(i % TX_BUFFER_COUNT)) {
 			misc_read_8chs_from_file(input_file,
 			                         current_buffers,
-			                         buf_size * TX_BUFFER_COUNT,
-			                         buf_size / sizeof(unsigned int) * TX_BUFFER_COUNT * cnt);
+			                         TX_BUF_SIZE * TX_BUFFER_COUNT,
+			                         TX_BUF_SIZE / sizeof(unsigned int) * TX_BUFFER_COUNT * cnt);
 			cnt++;
 		}
 

@@ -3,13 +3,17 @@
 #include "axi_dsp.h"
 #include "dma-proxy.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <piprotectedvariable.h>
 #include <pisemaphore.h>
 #include <pithread.h>
+#include <queue>
 #include <string>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <vector>
+
 
 #define N_SAMPS_IN_PACK   232
 #define N_PACKS_IN_TX_BUF 20
@@ -37,6 +41,8 @@ private:
 	int n_samps_per_buf = 232;
 
 	void save_buf_to_file(void * buffer, int N);
+
+	std::queue<std::vector<unsigned int>> dataQueue;
 
 public:
 	struct ch_config {

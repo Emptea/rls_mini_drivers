@@ -165,7 +165,8 @@ int dma_channel::wait_for_transfer() {
 				n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
 			}
 			print_hdr(buffer);
-			save_buf_to_file(buffer, n_samps_to_save);
+			dataQueue.emplace(buffer, buffer + n_samps_to_save);
+			// save_buf_to_file(buffer, n_samps_to_save);
 		}
 		ch.in_progress_count--;
 		ch.counter++;
@@ -187,4 +188,14 @@ void dma_channel::cleanup() {
 	       num_transfers,
 	       ch.counter,
 	       ch.in_progress_count);
+
+	if (flag_save_buf) {
+		while (!dataQueue.empty()) {
+			auto & samples = dataQueue.front();
+
+			save_buf_to_file(samples.data(), static_cast<int>(samples.size()));
+
+			dataQueue.pop();
+		}
+	}
 }

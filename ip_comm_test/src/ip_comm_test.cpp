@@ -197,7 +197,7 @@ int main(int argc, char * argv[]) {
 		break;
 	}
 	case TP_BYPASS: {
-		n_samps_per_buf = (N_SAMPS_IN_TX_BUF + HDR_SIZE) * N_PACKS_IN_TX_BUF;
+		n_samps_per_buf = (N_SAMPS_IN_PACK + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;
 	}
 	case TP_CUT:

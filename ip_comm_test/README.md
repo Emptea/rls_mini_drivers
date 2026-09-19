@@ -3,12 +3,12 @@
 Запуск:
 ```bash
 cd build
-sudo ./ip_comm_test <test point> <channel> <file_to_read.txt> <file_to_dump.hex>
+sudo ./ip_comm_test <test_point> <channel> <range_gate> <num_transfers> <input_file> <output_file>
 ```
 
 Пример для запуска с 1 тестовой точки и 0 канала файла test.txt из папки build:
 ```bash
-sudo ./ip_comm_test 1 0 test.txt dump_ch0.hex
+sudo ./ip_comm_test 1 0 0 1000 test.txt dump_ch0.hex
 ```
 
 При перезагрузке bitstream через Vivado перед запуском необходимо запустить из папки build файл `reload_driver.sh` через `sudo`:

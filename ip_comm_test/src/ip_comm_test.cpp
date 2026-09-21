@@ -206,11 +206,14 @@ int main(int argc, char * argv[]) {
 		n_samps_per_buf = (164 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;
 	}
-	case TP_SF:
+	case TP_SF: {
+		n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
+		break;
+	}
 	case TP_MAX:
 	case TP_RANK:
 	case TP_APU: {
-		n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
+		n_samps_per_buf = (141 + HDR_SIZE);
 		break;
 	}
 	case TP_DDR:

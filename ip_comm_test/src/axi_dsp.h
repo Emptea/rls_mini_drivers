@@ -63,10 +63,12 @@ struct header {
 	uint32_t del_low;
 	uint32_t packet_number;
 	uint64_t timestamp;
-	uint32_t channel: 16;
+	uint32_t channel: 3;
+	uint32_t range  : 13;
 	uint32_t tp     : 16;
 } __attribute__((packed));
 #pragma pack(pop)
+
 
 uint32_t axi_dsp_init();
 void axi_dsp_deinit();

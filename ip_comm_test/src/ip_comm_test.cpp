@@ -72,10 +72,16 @@ int main(int argc, char * argv[]) {
 	PIString output_file    = dir_path_str + "/" + argv[6]; // File to dump RX data (optional, can be empty string)
 
 	axi_dsp_init();
+
+	auto ip_ver = axi_dsp_get_ip_ver();
+	PICout(PICoutManipulators::AddNone) << "\nIP Version: " << ip_ver.MAJ_VER << "." << ip_ver.MIN_VER << "\n" << "\n";
+
 	axi_dsp_kill();
+	axi_dsp_set_motion_selector(1,1);		
 	axi_dsp_set_output_source(test_point, channel, range_gate);
 	auto v = axi_dsp_get_output_source();
 	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << ", RANGE_GATE: " << v.RANGE_GATE << "\n";
+
 	cmplx_f64 manual_comp       = {.real = 1, .imag = 0};
 	cmplx_f64 diagrams_even     = {.real = 1, .imag = 0};
 	cmplx_f64 diagrams_odd      = {.real = 0, .imag = 1};

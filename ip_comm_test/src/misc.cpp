@@ -124,6 +124,75 @@ int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t
 	return 0;
 }
 
+int misc_read_8chs(FILE * fp, uint8_t * buffers[8], size_t buffer_size_bytes) {
+	if (!fp || !buffers) {
+		return -1;
+	}
+
+	const size_t max_int16_elements = buffer_size_bytes / sizeof(int16_t);
+
+	const size_t max_samples        = max_int16_elements / 2;
+
+	int16_t * buf16[8];
+
+	for (int ch = 0; ch < 8; ++ch) {
+		buf16[ch] = reinterpret_cast<int16_t *>(buffers[ch]);
+	}
+
+	char line[256];
+	size_t sample_count = 0;
+
+	while (sample_count < max_samples && fgets(line, sizeof(line), fp)) {
+		// Убираем \n и \r
+		size_t line_len = strlen(line);
+
+		while (line_len > 0 && (line[line_len - 1] == '\n' || line[line_len - 1] == '\r')) {
+			line[--line_len] = '\0';
+		}
+
+		// В строке должны быть данные всех 8 каналов
+		if (line_len < 64) {
+			continue;
+		}
+
+		for (int ch = 0; ch < 8; ++ch) {
+			const int im_offset = (ch * 2) * 4;
+			const int re_offset = (ch * 2 + 1) * 4;
+
+			char re_hex[5];
+			char im_hex[5];
+
+			memcpy(re_hex, line + re_offset, 4);
+			memcpy(im_hex, line + im_offset, 4);
+
+			re_hex[4]            = '\0';
+			im_hex[4]            = '\0';
+
+			const int16_t re_val = static_cast<int16_t>(strtoul(re_hex, nullptr, 16));
+
+			const int16_t im_val = static_cast<int16_t>(strtoul(im_hex, nullptr, 16));
+
+			const size_t pos     = sample_count * 2;
+
+			buf16[ch][pos]       = re_val;
+			buf16[ch][pos + 1]   = im_val;
+		}
+
+		++sample_count;
+	}
+
+	// Остаток буфера заполняем нулями
+	for (int ch = 0; ch < 8; ++ch) {
+		const size_t start = sample_count * 2;
+
+		for (size_t i = start; i < max_int16_elements; ++i) {
+			buf16[ch][i] = 0;
+		}
+	}
+
+	return (sample_count == max_samples) ? 0 : 1;
+}
+
 std::string misc_get_date() {
 	time_t now      = time(nullptr);
 	tm * local_time = localtime(&now);

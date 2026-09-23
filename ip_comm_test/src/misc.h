@@ -54,5 +54,6 @@ void misc_init_input_tread();
 void misc_to_binstr(const int a[], int len, char result[]);
 bool misc_arr_bin2uint16(const uint bits[], int len, uint16_t result[], int res_len);
 int misc_read_8chs_from_file(const char * filename, uint8_t * buffers[8], size_t buffer_size_bytes, size_t sample_offset);
+int misc_read_8chs(FILE * fp, uint8_t * buffers[8], size_t buffer_size_bytes);
 
 #endif /* MISC_H */

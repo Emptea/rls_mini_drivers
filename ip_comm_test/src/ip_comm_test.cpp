@@ -35,6 +35,53 @@ namespace fs = std::filesystem;
 #define NUM_CHANNELS_RX 1
 #define NUM_CHANNELS_TX 8
 
+static int load_8chs_from_file(const char * filename, uint8_t * buffers[NUM_CHANNELS_TX], size_t total_size) {
+	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+		buffers[ch] = nullptr;
+	}
+
+	FILE * fp = fopen(filename, "r");
+
+	if (!fp) {
+		piCout << "Failed to open input file " << filename;
+		return -1;
+	}
+
+	try {
+		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+			buffers[ch] = new uint8_t[total_size];
+		}
+	} catch (const std::bad_alloc &) {
+		piCout << "Failed to allocate input buffers";
+
+		fclose(fp);
+
+		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+			delete[] buffers[ch];
+			buffers[ch] = nullptr;
+		}
+
+		return -1;
+	}
+
+	const int ret = misc_read_8chs(fp, buffers, total_size);
+
+	fclose(fp);
+
+	if (ret < 0) {
+		piCout << "Failed to read input file";
+
+		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+			delete[] buffers[ch];
+			buffers[ch] = nullptr;
+		}
+
+		return -1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char * argv[]) {
 	if (argc < 5) {
 		printf("usage: %s <test_point> <channel> <range_gate> <num_transfers> <input_file> <output_file>\n", argv[0]);
@@ -71,13 +118,20 @@ int main(int argc, char * argv[]) {
 	const char * input_file = argv[5];
 	PIString output_file    = dir_path_str + "/" + argv[6]; // File to dump RX data (optional, can be empty string)
 
+	// Чтение файла данных в буфер file_buffers
+	const size_t total_size = static_cast<size_t>(num_transfers) * TX_BUF_SIZE;
+	uint8_t * file_buffers[NUM_CHANNELS_TX];
+	if (load_8chs_from_file(input_file, file_buffers, total_size) != 0) {
+		return 1;
+	}
+
 	axi_dsp_init();
 
 	auto ip_ver = axi_dsp_get_ip_ver();
 	PICout(PICoutManipulators::AddNone) << "\nIP Version: " << ip_ver.MAJ_VER << "." << ip_ver.MIN_VER << "\n" << "\n";
 
 	axi_dsp_kill();
-	axi_dsp_set_motion_selector(1,1);		
+	axi_dsp_set_motion_selector(1, 1);
 	axi_dsp_set_output_source(test_point, channel, range_gate);
 	auto v = axi_dsp_get_output_source();
 	piCout << "SOURCE: " << v.SOURCE << ", SOURCE_CHANNEL: " << v.SOURCE_CHANNEL << ", RANGE_GATE: " << v.RANGE_GATE << "\n";
@@ -279,25 +333,13 @@ int main(int argc, char * argv[]) {
 		}
 	}
 
-	uint8_t * current_buffers[NUM_CHANNELS_TX];
-	for (size_t k = 0; k < NUM_CHANNELS_TX; k++) {
-		// dma_channels[k + 1]->get_all_buffers(tx_buffers[k]);
-		current_buffers[k] = (uint8_t *)tx_buffers[k][0];
-	}
-	size_t cnt = 0;
-
 	dma_channels[0]->start();
 	int buff_id = 0;
 	for (size_t i = 0; i < num_transfers; i++) {
-		if (!(i % TX_BUFFER_COUNT)) {
-			misc_read_8chs_from_file(input_file,
-			                         current_buffers,
-			                         TX_BUF_SIZE * TX_BUFFER_COUNT,
-			                         TX_BUF_SIZE / sizeof(unsigned int) * TX_BUFFER_COUNT * cnt);
-			cnt++;
+		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+			memcpy(tx_buffers[ch][buff_id], file_buffers[ch] + i * TX_BUF_SIZE, TX_BUF_SIZE);
 		}
 
-		size_t offset = i * n_samps_per_buf * N_PACKS_IN_TX_BUF;
 		PISystemTime t0_send, t1_send;
 		t0_send = PISystemTime::current();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
@@ -317,6 +359,7 @@ int main(int argc, char * argv[]) {
 		t1      = PISystemTime::current();
 		// piCout << "start wait - stop transfer time = " << t1 - t0;
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
+		500_us .sleep();
 	}
 	dma_channels[0]->waitForFinish();
 
@@ -327,6 +370,12 @@ int main(int argc, char * argv[]) {
 		delete dma_channels[k];
 		dma_channels[k] = nullptr;
 	}
+
+	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+		delete[] file_buffers[ch];
+		file_buffers[ch] = nullptr;
+	}
+
 	axi_dsp_deinit();
 	piDeleteSafety(kbd);
 

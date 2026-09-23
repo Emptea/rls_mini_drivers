@@ -266,6 +266,7 @@ int main(int argc, char * argv[]) {
 		n_samps_per_buf = (164 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;
 	}
+	case TP_MTI:
 	case TP_SF: {
 		n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
 		break;

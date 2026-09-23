@@ -334,35 +334,27 @@ int main(int argc, char * argv[]) {
 	}
 
 	dma_channels[0]->start();
-	int buff_id = 0;
+	dma_channels[0]->waitForStart();
+	int buff_id          = 0;
+	PISystemTime t_start = PISystemTime::current();
 	for (size_t i = 0; i < num_transfers; i++) {
-		PISystemTime t_start = PISystemTime::current();
 		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
 			memcpy(tx_buffers[ch][buff_id], file_buffers[ch] + i * TX_BUF_SIZE, TX_BUF_SIZE);
 		}
-		
-		PISystemTime t0_send, t1_send;
-		t0_send = PISystemTime::current();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->start_transfer();
 		}
-		t1_send = PISystemTime::current();
-		// piCout << "start transfer - exit from start transfer time = " << t1_send - t0_send;
-
-		PISystemTime t0, t1;
 		125_us .sleep();
 
-		t0 = PISystemTime::current();
 		for (int k = dma_channels.size() - 1; k >= 1; k--) {
 			dma_channels[k]->wait_for_transfer();
 			// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
 		}
-		// piCout << "start wait - stop transfer time = " << t1 - t0;
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
-		500_us .sleep();
-		t1      = PISystemTime::current();
-		piCout << "transfer time = " << t1 - t_start;
+		600_us .sleep();
 	}
+	PISystemTime t_end = PISystemTime::current();
+	piCout << "Mean: transfer time = " << (t_end - t_start) / num_transfers;
 	dma_channels[0]->waitForFinish();
 
 	// WAIT_FOR_EXIT;

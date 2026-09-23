@@ -136,7 +136,7 @@ int misc_read_8chs(FILE * fp, uint8_t * buffers[8], size_t buffer_size_bytes) {
 	int16_t * buf16[8];
 
 	for (int ch = 0; ch < 8; ++ch) {
-		buf16[ch] = reinterpret_cast<int16_t *>(buffers[ch]);
+		buf16[ch] = reinterpret_cast<int16_t *>(buffers[7 - ch]);
 	}
 
 	char line[256];

@@ -166,7 +166,7 @@ int dma_channel::wait_for_transfer() {
 				// save_buf_to_file expects a count of 32-bit words.
 				n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
 			}
-			print_hdr(buffer);
+			// print_hdr(buffer);
 			dataQueue.emplace(buffer, buffer + n_samps_to_save);
 			// save_buf_to_file(buffer, n_samps_to_save);
 		}

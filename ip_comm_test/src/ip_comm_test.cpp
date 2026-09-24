@@ -334,29 +334,29 @@ int main(int argc, char * argv[]) {
 		}
 	}
 
-	dma_channels[0]->start();
-	dma_channels[0]->waitForStart();
+	// dma_channels[0]->start();
+	// dma_channels[0]->waitForStart();
 	int buff_id          = 0;
 	PISystemTime t_start = PISystemTime::current();
 	for (size_t i = 0; i < num_transfers; i++) {
 		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
 			memcpy(tx_buffers[ch][buff_id], file_buffers[ch] + i * TX_BUF_SIZE, TX_BUF_SIZE);
 		}
-		for (int k = dma_channels.size() - 1; k >= 1; k--) {
+		for (size_t k = 0; k < dma_channels.size(); k++) {
 			dma_channels[k]->start_transfer();
 		}
-		125_us .sleep();
+		// 125_us .sleep();
 
-		for (int k = dma_channels.size() - 1; k >= 1; k--) {
+		for (int k = dma_channels.size() - 1; k >= 0; k--) {
 			dma_channels[k]->wait_for_transfer();
 			// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
 		}
 		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
-		600_us .sleep();
+		// 600_us .sleep();
 	}
 	PISystemTime t_end = PISystemTime::current();
 	piCout << "Mean: transfer time = " << (t_end - t_start) / num_transfers;
-	dma_channels[0]->waitForFinish();
+	// dma_channels[0]->waitForFinish();
 
 	// WAIT_FOR_EXIT;
 

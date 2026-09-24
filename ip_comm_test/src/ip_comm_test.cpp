@@ -341,13 +341,14 @@ int main(int argc, char * argv[]) {
 
 	int buff_id          = 0;
 	PISystemTime t_start = PISystemTime::current();
+	PISystemTime t_end = PISystemTime::current();
 	size_t submitted     = 0;
 	size_t completed     = 0;
 	piCout << "Start Transfer";
 
 	while (completed < num_transfers) {
 		if (submitted < num_transfers && submitted - completed < RX_PIPELINE_DEPTH) {
-			600_us .sleep();
+			// 600_us .sleep();
 			const int rx_buf_id = submitted % RX_PIPELINE_DEPTH;
 			dma_channels[0]->start_transfer_for_buf(rx_buf_id);
 			for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
@@ -370,6 +371,7 @@ int main(int argc, char * argv[]) {
 		}
 
 		const int rx_buf_id = completed % RX_PIPELINE_DEPTH;
+		t_end = PISystemTime::current();
 		int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
 		if (ret != 0) {
 			fprintf(stderr,
@@ -396,8 +398,9 @@ int main(int argc, char * argv[]) {
 		piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed + 1;
 		++completed;
 	}
-	PISystemTime t_end = PISystemTime::current();
-	piCout << "Mean: transfer time = " << (t_end - t_start) / num_transfers;
+	piCout << "====";
+	piCout << "Mean: transfer time = " << (t_end - t_start) / completed;
+	piCout << "====";
 
 	// for (size_t i = 0; i < num_transfers; i++) {
 	// 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {

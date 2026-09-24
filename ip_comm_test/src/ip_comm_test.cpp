@@ -35,6 +35,11 @@ namespace fs = std::filesystem;
 #define NUM_CHANNELS_RX 1
 #define NUM_CHANNELS_TX 8
 
+constexpr size_t RX_PIPELINE_DEPTH = 4;
+
+// static_assert(PIPELINE_DEPTH <= TX_BUFFER_COUNT);
+// static_assert(PIPELINE_DEPTH <= RX_BUFFER_COUNT);
+
 static int load_8chs_from_file(const char * filename, uint8_t * buffers[NUM_CHANNELS_TX], size_t total_size) {
 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
 		buffers[ch] = nullptr;
@@ -334,29 +339,84 @@ int main(int argc, char * argv[]) {
 		}
 	}
 
-	dma_channels[0]->start();
-	dma_channels[0]->waitForStart();
 	int buff_id          = 0;
 	PISystemTime t_start = PISystemTime::current();
-	for (size_t i = 0; i < num_transfers; i++) {
-		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-			memcpy(tx_buffers[ch][buff_id], file_buffers[ch] + i * TX_BUF_SIZE, TX_BUF_SIZE);
-		}
-		for (int k = dma_channels.size() - 1; k >= 1; k--) {
-			dma_channels[k]->start_transfer();
-		}
-		125_us .sleep();
+	size_t submitted     = 0;
+	size_t completed     = 0;
+	piCout << "Start Transfer";
 
-		for (int k = dma_channels.size() - 1; k >= 1; k--) {
-			dma_channels[k]->wait_for_transfer();
-			// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
+	while (completed < num_transfers) {
+		if (submitted < num_transfers && submitted - completed < RX_PIPELINE_DEPTH) {
+			600_us .sleep();
+			const int rx_buf_id = submitted % RX_PIPELINE_DEPTH;
+			dma_channels[0]->start_transfer_for_buf(rx_buf_id);
+			for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+				memcpy(tx_buffers[ch][0], file_buffers[ch] + submitted * TX_BUF_SIZE, TX_BUF_SIZE);
+			}
+			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
+				dma_channels[ch]->start_transfer_for_buf(0);
+			}
+			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
+				int ret = dma_channels[ch]->wait_for_transfer(0);
+				if (ret != 0) {
+					fprintf(stderr, "TX ERROR ch=%zu transaction=%zu ret=%d\n", ch - 1, submitted, ret);
+				}
+			}
+			piCout << "TX DONE transaction=" << submitted << " rx_buf=" << rx_buf_id;
+
+			++submitted;
+
+			continue;
 		}
-		buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
-		600_us .sleep();
+
+		const int rx_buf_id = completed % RX_PIPELINE_DEPTH;
+		int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
+		if (ret != 0) {
+			fprintf(stderr,
+			        "RX ERROR transaction=%zu buf=%d "
+			        "sent=%zu received=%zu\n",
+			        completed,
+			        rx_buf_id,
+			        submitted,
+			        completed);
+
+			// Diagnostic: проверить остальные уже запущенные RX
+			for (size_t transaction = completed + 1; transaction < submitted; ++transaction) {
+				const int next_buf = transaction % RX_PIPELINE_DEPTH;
+				int next_ret       = dma_channels[0]->wait_for_transfer(next_buf);
+				fprintf(stderr,
+				        "RX AFTER ERROR transaction=%zu "
+				        "buf=%d ret=%d\n",
+				        transaction,
+				        next_buf,
+				        next_ret);
+			}
+			break;
+		}
+		piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed + 1;
+		++completed;
 	}
 	PISystemTime t_end = PISystemTime::current();
 	piCout << "Mean: transfer time = " << (t_end - t_start) / num_transfers;
-	dma_channels[0]->waitForFinish();
+
+	// for (size_t i = 0; i < num_transfers; i++) {
+	// 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+	// 		memcpy(tx_buffers[ch][buff_id], file_buffers[ch] + i * TX_BUF_SIZE, TX_BUF_SIZE);
+	// 	}
+	// 	for (int k = dma_channels.size() - 1; k >= 1; k--) {
+	// 		dma_channels[k]->start_transfer();
+	// 	}
+	// 	125_us .sleep();
+
+	// 	for (int k = dma_channels.size() - 1; k >= 1; k--) {
+	// 		dma_channels[k]->wait_for_transfer();
+	// 		// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
+	// 	}
+	// 	buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
+	// 	600_us .sleep();
+	// }
+	// dma_channels[0]->waitForFinish();
+
 
 	// WAIT_FOR_EXIT;
 

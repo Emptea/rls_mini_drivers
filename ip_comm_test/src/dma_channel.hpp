@@ -56,7 +56,8 @@ public:
 	void single_transfer_one_buf();
 	void single_transfer_all_bufs();
 	void start_transfer();
-	void start_transfer_for_buf(int buffer_id);
+	int start_transfer_for_buf(int buffer_id);
+	int wait_for_transfer(int buffer_id);
 	int wait_for_transfer();
 
 	void begin() override {

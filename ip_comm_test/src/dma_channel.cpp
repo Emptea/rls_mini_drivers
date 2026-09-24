@@ -131,10 +131,16 @@ void dma_channel::start_transfer() {
 	ch.in_progress_count++;
 }
 
-void dma_channel::start_transfer_for_buf(int buffer_id) {
+int dma_channel::start_transfer_for_buf(int buffer_id) {
 	// printf("Start transfer for DMA buffer %d devnode %s\n", buffer_id, config.devnode.c_str());
-	ioctl(ch.fd, START_XFER, &buffer_id);
+	int ret = ioctl(ch.fd, START_XFER, &buffer_id);
+	if (ret < 0) {
+		perror("START_XFER");
+		return -1;
+	}
+
 	ch.in_progress_count++;
+	return 0;
 }
 
 int dma_channel::wait_for_transfer() {
@@ -178,6 +184,47 @@ int dma_channel::wait_for_transfer() {
 	// ch.buffer_id = ch.counter % ch.buffer_count;
 	return 0;
 }
+
+int dma_channel::wait_for_transfer(int buffer_id) {
+	int ret = ioctl(ch.fd, FINISH_XFER, &buffer_id);
+
+	if (ret < 0) {
+		perror("FINISH_XFER");
+		return -1;
+	}
+
+	const auto status = ch.buf_ptr->states[buffer_id].status;
+	--ch.in_progress_count;
+
+	if (status != proxy_status::PROXY_NO_ERROR) {
+		fprintf(stderr, "DMA transfer error: buffer=%d dev=%s status=%d\n", buffer_id, config.devnode.c_str(), status);
+
+		return status;
+	}
+
+	++ch.counter;
+
+	// Для RX оставляем вашу обработку
+	if (flag_save_buf) {
+		auto * buffer       = ch.buf_ptr->buffers[buffer_id].buffer;
+
+		const auto * hdr    = reinterpret_cast<const struct header *>(buffer);
+
+		int n_samps_to_save = n_samps_per_buf;
+
+		if (hdr->tp == TP_WORK) {
+			const auto * work = reinterpret_cast<const struct work_posthdr *>(reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
+
+			n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
+		}
+
+		dataQueue.emplace(buffer, buffer + n_samps_to_save);
+	}
+
+
+	return 0;
+}
+
 void dma_channel::cleanup() {
 	if (munmap(ch.buf_ptr, sizeof(channel_buffer) * ch.buffer_count) == -1) {
 		perror("munmap failed");
@@ -185,7 +232,7 @@ void dma_channel::cleanup() {
 	ch.buf_ptr = nullptr;
 	close(ch.fd);
 
-	printf("DMA transfer stopped for devnode %s, # transfers %d, # completed %d, # in progress %d\n",
+	printf("DMA stopped %s, # transfers %d, # completed %d, # in progress %d\n",
 	       config.devnode.c_str(),
 	       num_transfers,
 	       ch.counter,

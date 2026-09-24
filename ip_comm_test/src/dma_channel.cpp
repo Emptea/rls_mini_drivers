@@ -29,6 +29,8 @@ static void print_work(void * data) {
 			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << packet.neighbor_amplitude;
 		piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
 			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.frequency_channel;
+		piCout << "Ranker output" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.rank_out;
 	}
 	piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
 }

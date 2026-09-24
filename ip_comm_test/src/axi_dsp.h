@@ -48,6 +48,7 @@ struct work_packet {
 	uint16_t neighbor_diagram_side: 1;
 	uint16_t frequency_channel    : 9;
 	uint16_t padding              : 11;
+	uint32_t rank_out;
 } __attribute__((packed));
 #pragma pack(pop)
 

@@ -193,6 +193,45 @@ int misc_read_8chs(FILE * fp, uint8_t * buffers[8], size_t buffer_size_bytes) {
 	return (sample_count == max_samples) ? 0 : 1;
 }
 
+size_t misc_count_8chs_samples(FILE * fp) {
+	if (!fp) {
+		return 0;
+	}
+
+	char line[256];
+	size_t sample_count = 0;
+
+	while (fgets(line, sizeof(line), fp)) {
+		size_t line_len = strlen(line);
+
+		while (line_len > 0 && (line[line_len - 1] == '\n' || line[line_len - 1] == '\r')) {
+			--line_len;
+		}
+
+		if (line_len >= 64) {
+			++sample_count;
+		}
+	}
+
+	return sample_count;
+}
+
+void misc_copy_cyclic_iq(struct iq_sample * dst, const struct iq_sample * src, size_t src_samples, size_t offset, size_t count) {
+	offset %= src_samples;
+
+	size_t copied = 0;
+
+	while (copied < count) {
+		const size_t available = src_samples - offset;
+		const size_t chunk     = std::min(count - copied, available);
+
+		memcpy(dst + copied, src + offset, chunk * sizeof(struct iq_sample));
+
+		copied += chunk;
+		offset = 0;
+	}
+}
+
 std::string misc_get_date() {
 	time_t now      = time(nullptr);
 	tm * local_time = localtime(&now);

@@ -40,21 +40,31 @@ constexpr size_t RX_PIPELINE_DEPTH = 4;
 // static_assert(PIPELINE_DEPTH <= TX_BUFFER_COUNT);
 // static_assert(PIPELINE_DEPTH <= RX_BUFFER_COUNT);
 
-static int load_8chs_from_file(const char * filename, uint8_t * buffers[NUM_CHANNELS_TX], size_t total_size) {
+static int load_8chs_from_file(const char * filename, struct iq_sample * buffers[NUM_CHANNELS_TX], size_t & file_samples) {
 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
 		buffers[ch] = nullptr;
 	}
 
-	FILE * fp = fopen(filename, "r");
+	file_samples = 0;
 
+	FILE * fp    = fopen(filename, "r");
 	if (!fp) {
 		piCout << "Failed to open input file " << filename;
 		return -1;
 	}
 
+	// Одна валидная строка = один IQ sample на каждый канал
+	file_samples = misc_count_8chs_samples(fp);
+
+	if (file_samples == 0) {
+		piCout << "Input file contains no valid samples";
+		fclose(fp);
+		return -1;
+	}
+
 	try {
 		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-			buffers[ch] = new uint8_t[total_size];
+			buffers[ch] = new struct iq_sample[file_samples];
 		}
 	} catch (const std::bad_alloc &) {
 		piCout << "Failed to allocate input buffers";
@@ -66,10 +76,23 @@ static int load_8chs_from_file(const char * filename, uint8_t * buffers[NUM_CHAN
 			buffers[ch] = nullptr;
 		}
 
+		file_samples = 0;
 		return -1;
 	}
 
-	const int ret = misc_read_8chs(fp, buffers, total_size);
+	rewind(fp);
+
+	// misc_read_8chs пока принимает uint8_t*,
+	// поэтому только здесь делаем преобразование.
+	uint8_t * raw_buffers[NUM_CHANNELS_TX];
+
+	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+		raw_buffers[ch] = reinterpret_cast<uint8_t *>(buffers[ch]);
+	}
+
+	const size_t buffer_size_bytes = file_samples * sizeof(struct iq_sample);
+
+	const int ret                  = misc_read_8chs(fp, raw_buffers, buffer_size_bytes);
 
 	fclose(fp);
 
@@ -81,6 +104,7 @@ static int load_8chs_from_file(const char * filename, uint8_t * buffers[NUM_CHAN
 			buffers[ch] = nullptr;
 		}
 
+		file_samples = 0;
 		return -1;
 	}
 
@@ -124,9 +148,10 @@ int main(int argc, char * argv[]) {
 	PIString output_file    = dir_path_str + "/" + argv[6]; // File to dump RX data (optional, can be empty string)
 
 	// Чтение файла данных в буфер file_buffers
-	const size_t total_size = static_cast<size_t>(num_transfers) * TX_BUF_SIZE;
-	uint8_t * file_buffers[NUM_CHANNELS_TX];
-	if (load_8chs_from_file(input_file, file_buffers, total_size) != 0) {
+	struct iq_sample * file_buffers[NUM_CHANNELS_TX];
+	size_t file_samples = 0;
+
+	if (load_8chs_from_file(input_file, file_buffers, file_samples) != 0) {
 		return 1;
 	}
 
@@ -341,19 +366,25 @@ int main(int argc, char * argv[]) {
 
 	int buff_id          = 0;
 	PISystemTime t_start = PISystemTime::current();
-	PISystemTime t_end = PISystemTime::current();
+	PISystemTime t_end   = PISystemTime::current();
 	size_t submitted     = 0;
 	size_t completed     = 0;
 	piCout << "Start Transfer";
-
+	size_t file_pos         = 0;
+	const size_t tx_samples = TX_BUF_SIZE / sizeof(struct iq_sample);
 	while (completed < num_transfers) {
 		if (submitted < num_transfers && submitted - completed < RX_PIPELINE_DEPTH) {
 			// 600_us .sleep();
 			const int rx_buf_id = submitted % RX_PIPELINE_DEPTH;
 			dma_channels[0]->start_transfer_for_buf(rx_buf_id);
 			for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-				memcpy(tx_buffers[ch][0], file_buffers[ch] + submitted * TX_BUF_SIZE, TX_BUF_SIZE);
+				misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(tx_buffers[ch][0]),
+				                    file_buffers[ch],
+				                    file_samples,
+				                    file_pos,
+				                    tx_samples);
 			}
+			file_pos = (file_pos + tx_samples) % file_samples;
 			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
 				dma_channels[ch]->start_transfer_for_buf(0);
 			}
@@ -371,7 +402,7 @@ int main(int argc, char * argv[]) {
 		}
 
 		const int rx_buf_id = completed % RX_PIPELINE_DEPTH;
-		t_end = PISystemTime::current();
+		t_end               = PISystemTime::current();
 		int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
 		if (ret != 0) {
 			fprintf(stderr,

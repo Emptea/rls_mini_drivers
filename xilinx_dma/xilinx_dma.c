@@ -49,7 +49,7 @@
 #include <linux/clk.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
 
-#include <dmaengine.h>
+#include "dmaengine.h"
 
 /* Register/Descriptor Offsets */
 #define XILINX_DMA_MM2S_CTRL_OFFSET		0x0000
@@ -688,8 +688,6 @@ xilinx_axidma_alloc_tx_segment(struct xilinx_dma_chan *chan)
 
 	spin_lock_irqsave(&chan->lock, flags);
 
-	xilinx_mcdma_collect_drops_locked(chan);
-	chan->rx_dropped_total = 0;
 	if (!list_empty(&chan->free_seg_list)) {
 		segment = list_first_entry(&chan->free_seg_list,
 					   struct xilinx_axidma_tx_segment,
@@ -717,6 +715,8 @@ xilinx_aximcdma_alloc_tx_segment(struct xilinx_dma_chan *chan)
 	unsigned long flags;
 
 	spin_lock_irqsave(&chan->lock, flags);
+	xilinx_mcdma_collect_drops_locked(chan);
+	chan->rx_dropped_total = 0;
 	if (!list_empty(&chan->free_seg_list)) {
 		segment = list_first_entry(&chan->free_seg_list,
 					   struct xilinx_aximcdma_tx_segment,

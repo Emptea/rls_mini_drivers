@@ -49,7 +49,7 @@
 #include <linux/clk.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
 
-#include <linux/dmaengine.h>
+#include <dmaengine.h>
 
 /* Register/Descriptor Offsets */
 #define XILINX_DMA_MM2S_CTRL_OFFSET		0x0000
@@ -524,6 +524,8 @@ struct xilinx_dma_device {
 #define xilinx_dma_poll_timeout(chan, reg, val, cond, delay_us, timeout_us) \
 	readl_poll_timeout_atomic(chan->xdev->regs + chan->ctrl_offset + reg, \
 				  val, cond, delay_us, timeout_us)
+
+static u32 xilinx_mcdma_collect_drops_locked(struct xilinx_dma_chan *chan);
 
 /* IO accessors */
 static inline u32 dma_read(struct xilinx_dma_chan *chan, u32 reg)

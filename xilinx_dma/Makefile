@@ -14,13 +14,10 @@ ifndef CROSS_COMPILE
     KBUILD_DIR ?= /lib/modules/$(KERNEL_VERSION)/build/
 endif
 
-# Add include directory for dma-proxy.h
-EXTRA_CFLAGS += -I$(PWD)/../Common
-
 all:
 	make -C $(KBUILD_DIR) M=`pwd` modules
  
 clean:
 	rm -rf *.o *.cmd *.order Module.symvers *.ko *.mod* ./.* .tmp_versions
  
-obj-m += dma-proxy.o
+obj-m += xilinx_dma.o

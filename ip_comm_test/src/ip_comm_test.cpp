@@ -271,7 +271,7 @@ int main(int argc, char * argv[]) {
 	}
 	axi_dsp_set_compensation_mode(0);
 	axi_dsp_set_compensation_ref((uint32_t)1575);
-	axi_dsp_set_apu_rank(10, 15);
+	axi_dsp_set_apu_rank(9, 15);
 	axi_dsp_set_detector_level(36, 0);
 	axi_dsp_set_detector_level(0, 1);
 	axi_dsp_set_channel_mask(0xFF);
@@ -343,7 +343,7 @@ int main(int argc, char * argv[]) {
 	dma_channel::ch_config tx_config = {.buffer_size = TX_BUF_SIZE, .buffer_count = TX_BUFFER_COUNT};
 	piCout << "Wait for DMA init";
 	dma_channels[0]->init(rx_config);
-	// dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
+	dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
 	dma_channels[0]->set_num_transfers(num_transfers);
 	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
 		rx_buffers[i] = dma_channels[0]->get_buffer(i);
@@ -370,85 +370,14 @@ int main(int argc, char * argv[]) {
 	size_t submitted     = 0;
 	size_t completed     = 0;
 	piCout << "Start Transfer";
-	size_t file_pos           = 0;
-	const size_t tx_samples   = TX_BUF_SIZE / sizeof(struct iq_sample);
-	// while (completed < num_transfers) {
-	// 	if (submitted < num_transfers && submitted - completed < RX_PIPELINE_DEPTH) {
-	// 		// 600_us .sleep();
-	// 		const int rx_buf_id = submitted % RX_PIPELINE_DEPTH;
-	// 		dma_channels[0]->start_transfer_for_buf(rx_buf_id);
-
-	// 		for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-	// 			misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(tx_buffers[ch][0]),
-	// 			                    file_buffers[ch],
-	// 			                    file_samples,
-	// 			                    file_pos,
-	// 			                    tx_samples);
-	// 		}
-	// 		file_pos = (file_pos + tx_samples) % file_samples;
-
-	// 		for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
-	// 			dma_channels[ch]->start_transfer_for_buf(0);
-	// 		}
-	// 		for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
-	// 			int ret = dma_channels[ch]->wait_for_transfer(0);
-	// 			if (ret != 0) {
-	// 				fprintf(stderr, "TX ERROR ch=%zu transaction=%zu ret=%d\n", ch - 1, submitted, ret);
-	// 			}
-	// 		}
-	// 		// piCout << "TX DONE transaction=" << submitted << " rx_buf=" << rx_buf_id;
-
-	// 		++submitted;
-
-	// 		continue;
-	// 	}
-
-	// 	const int rx_buf_id = completed % RX_PIPELINE_DEPTH;
-	// 	t_end               = PISystemTime::current();
-	// 	int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
-	// 	if (ret != 0) {
-	// 		fprintf(stderr,
-	// 		        "RX ERROR transaction=%zu buf=%d "
-	// 		        "sent=%zu received=%zu\n",
-	// 		        completed,
-	// 		        rx_buf_id,
-	// 		        submitted,
-	// 		        completed);
-
-	// 		// Diagnostic: проверить остальные уже запущенные RX
-	// 		for (size_t transaction = completed + 1; transaction < submitted; ++transaction) {
-	// 			const int next_buf = transaction % RX_PIPELINE_DEPTH;
-	// 			int next_ret       = dma_channels[0]->wait_for_transfer(next_buf);
-	// 			fprintf(stderr,
-	// 			        "RX AFTER ERROR transaction=%zu "
-	// 			        "buf=%d ret=%d\n",
-	// 			        transaction,
-	// 			        next_buf,
-	// 			        next_ret);
-	// 		}
-	// 		break;
-	// 	}
-	// 	// piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed +
-	// 	// 1;
-	// 	++completed;
-	// }
-
-	constexpr size_t RX_AHEAD = 2;
-
-	static_assert(RX_AHEAD <= RX_BUFFER_COUNT);
-
-	size_t tx_submitted = 0;
-	size_t rx_started   = 0;
-	size_t rx_completed = 0;
-
-
-	while (rx_completed < num_transfers) {
-		while (rx_started < num_transfers && rx_started - rx_completed < RX_AHEAD) {
-			const int rx_buf_id = rx_started % RX_BUFFER_COUNT;
+	size_t file_pos         = 0;
+	const size_t tx_samples = TX_BUF_SIZE / sizeof(struct iq_sample);
+	while (completed < num_transfers) {
+		if (submitted < num_transfers && submitted - completed < RX_PIPELINE_DEPTH) {
+			// 600_us .sleep();
+			const int rx_buf_id = submitted % RX_PIPELINE_DEPTH;
 			dma_channels[0]->start_transfer_for_buf(rx_buf_id);
-			++rx_started;
-		}
-		if (tx_submitted < num_transfers) {
+
 			for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
 				misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(tx_buffers[ch][0]),
 				                    file_buffers[ch],
@@ -461,64 +390,52 @@ int main(int argc, char * argv[]) {
 			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
 				dma_channels[ch]->start_transfer_for_buf(0);
 			}
-
 			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
 				int ret = dma_channels[ch]->wait_for_transfer(0);
-
 				if (ret != 0) {
-					fprintf(stderr, "TX ERROR ch=%zu transaction=%zu ret=%d\n", ch - 1, tx_submitted, ret);
+					fprintf(stderr, "TX ERROR ch=%zu transaction=%zu ret=%d\n", ch - 1, submitted, ret);
 				}
 			}
+			// piCout << "TX DONE transaction=" << submitted << " rx_buf=" << rx_buf_id;
 
+			++submitted;
 
-			++tx_submitted;
+			continue;
 		}
 
-		if (rx_completed < tx_submitted) {
-			const int rx_buf_id = rx_completed % RX_BUFFER_COUNT;
-			t_end               = PISystemTime::current();
-			int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
+		const int rx_buf_id = completed % RX_PIPELINE_DEPTH;
+		t_end               = PISystemTime::current();
+		int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
+		if (ret != 0) {
+			fprintf(stderr,
+			        "RX ERROR transaction=%zu buf=%d "
+			        "sent=%zu received=%zu\n",
+			        completed,
+			        rx_buf_id,
+			        submitted,
+			        completed);
 
-			if (ret != 0) {
+			// Diagnostic: проверить остальные уже запущенные RX
+			for (size_t transaction = completed + 1; transaction < submitted; ++transaction) {
+				const int next_buf = transaction % RX_PIPELINE_DEPTH;
+				int next_ret       = dma_channels[0]->wait_for_transfer(next_buf);
 				fprintf(stderr,
-				        "RX ERROR transaction=%zu buf=%d "
-				        "tx=%zu rx_started=%zu rx_completed=%zu\n",
-				        rx_completed,
-				        rx_buf_id,
-				        tx_submitted,
-				        rx_started,
-				        rx_completed);
-
-				break;
+				        "RX AFTER ERROR transaction=%zu "
+				        "buf=%d ret=%d\n",
+				        transaction,
+				        next_buf,
+				        next_ret);
 			}
-
-			++rx_completed;
+			break;
 		}
+		// piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed +
+		// 1;
+		++completed;
 	}
+
 	piCout << "====";
 	piCout << "Mean: transfer time = " << (t_end - t_start) / completed;
 	piCout << "====";
-
-	// for (size_t i = 0; i < num_transfers; i++) {
-	// 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-	// 		memcpy(tx_buffers[ch][buff_id], file_buffers[ch] + i * TX_BUF_SIZE, TX_BUF_SIZE);
-	// 	}
-	// 	for (int k = dma_channels.size() - 1; k >= 1; k--) {
-	// 		dma_channels[k]->start_transfer();
-	// 	}
-	// 	125_us .sleep();
-
-	// 	for (int k = dma_channels.size() - 1; k >= 1; k--) {
-	// 		dma_channels[k]->wait_for_transfer();
-	// 		// piCout << "start wait - stop transfer time for channel" << k -1 << " = " << t1 - t0;
-	// 	}
-	// 	buff_id = (buff_id + 1) % TX_BUFFER_COUNT;
-	// 	600_us .sleep();
-	// }
-	// dma_channels[0]->waitForFinish();
-
-
-	// WAIT_FOR_EXIT;
 
 	for (int k = dma_channels.size() - 1; k >= 0; k--) {
 		dma_channels[k]->cleanup();

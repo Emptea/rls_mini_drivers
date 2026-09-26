@@ -74,6 +74,7 @@ struct header {
 
 uint32_t axi_dsp_init();
 void axi_dsp_deinit();
+void axi_dsp_configure();
 
 csr_ip_ver_t axi_dsp_get_ip_ver();
 uint32_t axi_dsp_get_kill();
@@ -123,5 +124,6 @@ void axi_dsp_set_channel_mask(uint32_t channel_mask);
 
 void axi_dsp_kill();
 void axi_dsp_apply();
+uint32_t axi_dsp_get_rx_words_per_buf(uint32_t test_point);
 
 #endif

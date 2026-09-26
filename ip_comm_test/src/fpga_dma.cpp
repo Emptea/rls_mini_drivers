@@ -1,15 +1,45 @@
 #include "fpga_dma.hpp"
+#include "rls_cfg.hpp"
 
 #include <cstring>
 #include <stdio.h>
 
-int fpga_dma::init(const config & cfg) {
-	tx_buf_size    = cfg.tx_buf_size;
-	rx_buf_size    = cfg.rx_buf_size;
-	rx_buf_count   = cfg.rx_buf_count;
-	submitted      = 0;
-	completed      = 0;
-	last_rx_buf_id = -1;
+#define RX_DEV            "/dev/dma_proxy_rx"
+#define TX_DEV_CH0        "/dev/dma_proxy_tx_ch0"
+#define TX_DEV_CH1        "/dev/dma_proxy_tx_ch1"
+#define TX_DEV_CH2        "/dev/dma_proxy_tx_ch2"
+#define TX_DEV_CH3        "/dev/dma_proxy_tx_ch3"
+#define TX_DEV_CH4        "/dev/dma_proxy_tx_ch4"
+#define TX_DEV_CH5        "/dev/dma_proxy_tx_ch5"
+#define TX_DEV_CH6        "/dev/dma_proxy_tx_ch6"
+#define TX_DEV_CH7        "/dev/dma_proxy_tx_ch7"
+
+constexpr size_t RX_PIPELINE_DEPTH = 8;
+
+int fpga_dma::init() {
+	config cfg;
+
+	cfg.rx_devnode     = RX_DEV;
+
+	cfg.tx_devnodes[0] = TX_DEV_CH0;
+	cfg.tx_devnodes[1] = TX_DEV_CH1;
+	cfg.tx_devnodes[2] = TX_DEV_CH2;
+	cfg.tx_devnodes[3] = TX_DEV_CH3;
+	cfg.tx_devnodes[4] = TX_DEV_CH4;
+	cfg.tx_devnodes[5] = TX_DEV_CH5;
+	cfg.tx_devnodes[6] = TX_DEV_CH6;
+	cfg.tx_devnodes[7] = TX_DEV_CH7;
+
+	cfg.tx_buf_size    = rls_cfg::TX_BUF_SIZE;
+	cfg.rx_buf_size    = BUFFER_SIZE;
+	cfg.rx_buf_count   = RX_BUFFER_COUNT;
+ 
+	tx_buf_size            = cfg.tx_buf_size;
+	rx_buf_size            = cfg.rx_buf_size;
+	rx_buf_count           = cfg.rx_buf_count;
+	submitted              = 0;
+	completed              = 0;
+	last_rx_buf_id         = -1;
 
 	dma_channel::ch_config rx_cfg;
 

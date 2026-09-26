@@ -8,18 +8,9 @@
 class fpga_dma {
 public:
 	static constexpr int NUM_TX_CHANNELS = 8;
+	static constexpr int NUM_RX_CHANNELS = 1;
 
-	struct config {
-		std::string rx_devnode;
-		std::string tx_devnodes[NUM_TX_CHANNELS];
-
-		int tx_buf_size;
-		int rx_buf_size;
-
-		int rx_buf_count;
-	};
-
-	int init(const config & cfg);
+	int init();
 	bool can_send() const;
 	int send(const void * data[NUM_TX_CHANNELS]);
 	int send();
@@ -31,6 +22,15 @@ public:
 	size_t get_completed() const;
 
 private:
+	struct config {
+		std::string rx_devnode;
+		std::string tx_devnodes[NUM_TX_CHANNELS];
+
+		int tx_buf_size;
+		int rx_buf_size;
+
+		int rx_buf_count;
+	};
 	dma_channel rx_channel;
 	dma_channel tx_channels[NUM_TX_CHANNELS];
 

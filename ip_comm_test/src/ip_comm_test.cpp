@@ -14,6 +14,7 @@
 #include <piscreen.h>
 #include <pisignals.h>
 #include <pistring_std.h>
+#include <queue>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +22,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -103,23 +105,18 @@ static void print_hdr(void * data) {
 	}
 }
 
-static void save_buf_to_file(void * buffer, int N) {
-	// piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
-	// const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
-	const uint32_t * buf32 = reinterpret_cast<const uint32_t *>(buffer);
-	if (dump_file == nullptr) {
-		piCout << "ERROR: dump_file is NULL, cannot save";
+static void save_buf_to_file(FILE * file, const void * buffer, int n) {
+	if (file == nullptr) {
+		piCout << "ERROR: dump file is NULL, cannot save";
 		return;
 	}
-	for (size_t i = 0; i < N; i++) {
-		fprintf(dump_file, "%08X\n", buf32[i]);
+
+	const auto * buf32 = reinterpret_cast<const uint32_t *>(buffer);
+
+	for (int i = 0; i < n; ++i) {
+		fprintf(file, "%08X\n", buf32[i]);
 	}
-
-
-	// Flush periodically
-	if (ch.counter % 10 == 0) fflush(dump_file);
 }
-
 
 static int load_8chs_from_file(const char * filename, struct iq_sample * buffers[NUM_CHANNELS_TX], size_t & file_samples) {
 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
@@ -193,10 +190,12 @@ static int load_8chs_from_file(const char * filename, struct iq_sample * buffers
 }
 
 int main(int argc, char * argv[]) {
-	if (argc < 5) {
+	if (argc < 7) {
 		printf("usage: %s <test_point> <channel> <range_gate> <num_transfers> <input_file> <output_file>\n", argv[0]);
 		return 1;
 	}
+
+	bool flag_save_buf    = true;
 
 	PIString dir_path_str = StdString2PIString(misc_get_date());
 	fs::path dir_path     = PIString2StdString(dir_path_str);
@@ -226,7 +225,18 @@ int main(int argc, char * argv[]) {
 	uint32_t range_gate     = (uint32_t)strtol(argv[3], NULL, 0);
 	uint32_t num_transfers  = (uint32_t)strtol(argv[4], NULL, 0);
 	const char * input_file = argv[5];
-	PIString output_file    = dir_path_str + "/" + argv[6]; // File to dump RX data (optional, can be empty string)
+	PIString output_file    = dir_path_str + "/" + argv[6];
+	FILE * dump_file        = nullptr;
+
+	if (flag_save_buf) {
+		dump_file = fopen(PIString2StdString(output_file).c_str(), "w");
+
+		if (dump_file == nullptr) {
+			perror("Failed to open output file");
+			return 1;
+		}
+	}
+
 
 	// Чтение файла данных в буфер file_buffers
 	struct iq_sample * file_buffers[NUM_CHANNELS_TX];
@@ -360,7 +370,6 @@ int main(int argc, char * argv[]) {
 
 	// uint32_t num_transfers   = 16;
 	uint32_t n_samps_per_buf = (141 + HDR_SIZE) * N_PACKS_IN_TX_BUF;
-	uint32_t num_rx_transfer = num_transfers * N_PACKS_IN_TX_BUF;
 
 	switch (test_point) {
 	case TP_WORK: {
@@ -430,16 +439,11 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
-	int buff_id          = 0;
 	PISystemTime t_start = PISystemTime::current();
-	PISystemTime t_end   = PISystemTime::current();
-	size_t submitted     = 0;
-	size_t completed     = 0;
 	piCout << "Start Transfer";
 	size_t file_pos         = 0;
 	const size_t tx_samples = TX_BUF_SIZE / sizeof(struct iq_sample);
-	size_t file_pos         = 0;
-	const size_t tx_samples = TX_BUF_SIZE / sizeof(struct iq_sample);
+	std::queue<std::vector<uint32_t>> dataQueue;
 
 	while (dma.get_completed() < num_transfers) {
 		if (dma.get_submitted() < num_transfers && dma.can_send()) {
@@ -450,20 +454,16 @@ int main(int argc, char * argv[]) {
 				                    file_pos,
 				                    tx_samples);
 			}
-
 			file_pos = (file_pos + tx_samples) % file_samples;
 
 			int ret  = dma.send();
-
 			if (ret != 0) {
 				fprintf(stderr, "TX ERROR transaction=%zu ret=%d\n", dma.get_submitted() - 1, ret);
 			}
-
 			continue;
 		}
 
 		int ret = dma.receive();
-
 		if (ret != 0) {
 			fprintf(stderr, "RX ERROR transaction=%zu ret=%d\n", dma.get_completed(), ret);
 			break;
@@ -472,57 +472,50 @@ int main(int argc, char * argv[]) {
 		void * rx_buffer = dma.get_rx_buffer();
 
 		// обработка / сохранение rx_buffer
+		if (flag_save_buf) {
+			auto * buffer       = reinterpret_cast<uint32_t *>(rx_buffer);
+			const auto * hdr    = reinterpret_cast<const struct header *>(buffer);
+			int n_samps_to_save = n_samps_per_buf;
+			if (hdr->tp == TP_WORK) {
+				const auto * work = reinterpret_cast<const struct work_posthdr *>(reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
+				n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
+			}
+			dataQueue.emplace(buffer, buffer + n_samps_to_save);
+		}
 	}
-
-	// 		if (flag_save_buf) {
-	// 	auto * buffer       = ch.buf_ptr->buffers[buffer_id].buffer;
-
-	// 	const auto * hdr    = reinterpret_cast<const struct header *>(buffer);
-
-	// 	int n_samps_to_save = n_samps_per_buf;
-
-	// 	if (hdr->tp == TP_WORK) {
-	// 		const auto * work = reinterpret_cast<const struct work_posthdr *>(reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
-
-	// 		n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
-	// 	}
-
-	// 	dataQueue.emplace(buffer, buffer + n_samps_to_save);
-	// }
 
 
 	// piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed +
 	// 1;
-	++completed;
-}
-
-piCout << "====";
-piCout << "Mean: transfer time = " << (t_end - t_start) / completed;
-piCout << "====";
-
-for (int k = dma_channels.size() - 1; k >= 0; k--) {
-	dma_channels[k]->cleanup();
-	delete dma_channels[k];
-	dma_channels[k] = nullptr;
-}
-
-if (flag_save_buf) {
-	while (!dataQueue.empty()) {
-		auto & samples = dataQueue.front();
-
-		save_buf_to_file(samples.data(), static_cast<int>(samples.size()));
-
-		dataQueue.pop();
+	PISystemTime t_end = PISystemTime::current();
+	piCout << "====";
+	if (dma.get_completed() > 0) {
+		piCout << "Mean: transfer time = " << (t_end - t_start) / dma.get_completed();
 	}
-}
+	piCout << "====";
+	dma.cleanup();
 
-for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-	delete[] file_buffers[ch];
-	file_buffers[ch] = nullptr;
-}
+	if (flag_save_buf) {
+		while (!dataQueue.empty()) {
+			auto & samples = dataQueue.front();
+			save_buf_to_file(dump_file, samples.data(), static_cast<int>(samples.size()));
+			dataQueue.pop();
+		}
+		fflush(dump_file);
+	}
 
-axi_dsp_deinit();
-piDeleteSafety(kbd);
+	if (dump_file != nullptr) {
+		fclose(dump_file);
+		dump_file = nullptr;
+	}
 
-return 0;
+	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+		delete[] file_buffers[ch];
+		file_buffers[ch] = nullptr;
+	}
+
+	axi_dsp_deinit();
+	piDeleteSafety(kbd);
+
+	return 0;
 }

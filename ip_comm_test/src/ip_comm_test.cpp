@@ -1,6 +1,8 @@
 #include "axi_dsp.h"
 #include "dma_channel.hpp"
+#include "fpga_dma.hpp"
 #include "misc.h"
+#include "picout.h"
 
 #include <cstdint>
 #include <fcntl.h>
@@ -22,23 +24,102 @@
 
 namespace fs = std::filesystem;
 
-#define RX_DEV          "/dev/dma_proxy_rx"
-#define TX_DEV_CH0      "/dev/dma_proxy_tx_ch0"
-#define TX_DEV_CH1      "/dev/dma_proxy_tx_ch1"
-#define TX_DEV_CH2      "/dev/dma_proxy_tx_ch2"
-#define TX_DEV_CH3      "/dev/dma_proxy_tx_ch3"
-#define TX_DEV_CH4      "/dev/dma_proxy_tx_ch4"
-#define TX_DEV_CH5      "/dev/dma_proxy_tx_ch5"
-#define TX_DEV_CH6      "/dev/dma_proxy_tx_ch6"
-#define TX_DEV_CH7      "/dev/dma_proxy_tx_ch7"
+#define N_SAMPS_IN_PACK   232
+#define N_PACKS_IN_TX_BUF 20
+#define N_SAMPS_IN_TX_BUF (N_SAMPS_IN_PACK * N_PACKS_IN_TX_BUF)
+#define TX_BUF_SIZE       (sizeof(unsigned int) * N_SAMPS_IN_TX_BUF)
+#define HDR_SIZE          6
 
-#define NUM_CHANNELS_RX 1
-#define NUM_CHANNELS_TX 8
+#define RX_DEV            "/dev/dma_proxy_rx"
+#define TX_DEV_CH0        "/dev/dma_proxy_tx_ch0"
+#define TX_DEV_CH1        "/dev/dma_proxy_tx_ch1"
+#define TX_DEV_CH2        "/dev/dma_proxy_tx_ch2"
+#define TX_DEV_CH3        "/dev/dma_proxy_tx_ch3"
+#define TX_DEV_CH4        "/dev/dma_proxy_tx_ch4"
+#define TX_DEV_CH5        "/dev/dma_proxy_tx_ch5"
+#define TX_DEV_CH6        "/dev/dma_proxy_tx_ch6"
+#define TX_DEV_CH7        "/dev/dma_proxy_tx_ch7"
+
+#define NUM_CHANNELS_RX   1
+#define NUM_CHANNELS_TX   8
 
 constexpr size_t RX_PIPELINE_DEPTH = 8;
 
 // static_assert(PIPELINE_DEPTH <= TX_BUFFER_COUNT);
 // static_assert(PIPELINE_DEPTH <= RX_BUFFER_COUNT);
+
+
+static void print_work(void * data) {
+	struct work_posthdr * work = (struct work_posthdr *)data;
+
+	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->packet_number;
+	piCout << "Number of detections" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << work->n_work_packets;
+
+	const struct work_packet * packets = reinterpret_cast<const struct work_packet *>(work + 1);
+	for (uint32_t i = 0; i < work->n_work_packets; ++i) {
+		const struct work_packet & packet = packets[i];
+		piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
+		piCout << "Work packet" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << i + 1;
+		piCout << "Range" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << static_cast<unsigned int>(packet.range);
+		piCout << "Main amplitude at sample" << packet.main_diagram_number << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.main_amplitude;
+		piCout << "Neighbour amplitude at sample" << packet.main_diagram_number - 1 + 2 * packet.neighbor_diagram_side
+			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << packet.neighbor_amplitude;
+		piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.frequency_channel;
+		piCout << "Ranker output" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.rank_out;
+	}
+	piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
+}
+
+static void print_hdr(void * data) {
+	struct header * hdr = (struct header *)data;
+
+	PICout(PICoutManipulators::AddNone) << "Delimiter" << PICoutManipulators::PICoutSpecialChar::Tab
+										<< PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+										<< PICoutManipulators::PICoutSpecialChar::Tab << " 0x" << PICoutManipulators::PICoutFormat::Hex
+										<< hdr->del_high << "_" << hdr->del_low << PICoutManipulators::PICoutSpecialChar::NewLine;
+	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->packet_number;
+	piCout << "Timestamp" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->timestamp;
+	piCout << "Channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << hdr->channel;
+	piCout << "Range gate" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->range;
+	piCout << "Test point" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
+		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->tp
+		   << PICoutManipulators::PICoutSpecialChar::NewLine;
+
+	if (hdr->tp == TP_WORK) {
+		print_work((uint32_t *)data + HDR_SIZE);
+	}
+}
+
+static void save_buf_to_file(void * buffer, int N) {
+	// piCout << "Saving started for buffer " << PICoutManipulators::PICoutFormat::Hex << buffer;
+	// const int16_t * buf16 = reinterpret_cast<const int16_t *>(buffer);
+	const uint32_t * buf32 = reinterpret_cast<const uint32_t *>(buffer);
+	if (dump_file == nullptr) {
+		piCout << "ERROR: dump_file is NULL, cannot save";
+		return;
+	}
+	for (size_t i = 0; i < N; i++) {
+		fprintf(dump_file, "%08X\n", buf32[i]);
+	}
+
+
+	// Flush periodically
+	if (ch.counter % 10 == 0) fflush(dump_file);
+}
+
 
 static int load_8chs_from_file(const char * filename, struct iq_sample * buffers[NUM_CHANNELS_TX], size_t & file_samples) {
 	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
@@ -326,42 +407,27 @@ int main(int argc, char * argv[]) {
 	}
 	}
 
-	PIVector<dma_channel *> dma_channels;
+	fpga_dma dma;
+	fpga_dma::config dma_cfg;
 
-	void * rx_buffers[RX_BUFFER_COUNT];
-	void * tx_buffers[NUM_CHANNELS_TX][TX_BUFFER_COUNT];
+	dma_cfg.rx_devnode     = RX_DEV;
 
-	dma_channels.resize(NUM_CHANNELS_TX + NUM_CHANNELS_RX);
-	for (int i = 0; i < NUM_CHANNELS_TX + NUM_CHANNELS_RX; i++) {
-		dma_channels[i] = new dma_channel();
-	}
+	dma_cfg.tx_devnodes[0] = TX_DEV_CH0;
+	dma_cfg.tx_devnodes[1] = TX_DEV_CH1;
+	dma_cfg.tx_devnodes[2] = TX_DEV_CH2;
+	dma_cfg.tx_devnodes[3] = TX_DEV_CH3;
+	dma_cfg.tx_devnodes[4] = TX_DEV_CH4;
+	dma_cfg.tx_devnodes[5] = TX_DEV_CH5;
+	dma_cfg.tx_devnodes[6] = TX_DEV_CH6;
+	dma_cfg.tx_devnodes[7] = TX_DEV_CH7;
 
-	PIString tx_devnodes[NUM_CHANNELS_TX] =
-		{TX_DEV_CH0, TX_DEV_CH1, TX_DEV_CH2, TX_DEV_CH3, TX_DEV_CH4, TX_DEV_CH5, TX_DEV_CH6, TX_DEV_CH7};
+	dma_cfg.tx_buf_size    = TX_BUF_SIZE;
+	dma_cfg.rx_buf_size    = BUFFER_SIZE;
+	dma_cfg.rx_buf_count   = RX_PIPELINE_DEPTH;
 
-	dma_channel::ch_config rx_config = {.devnode = RX_DEV, .buffer_size = BUFFER_SIZE, .buffer_count = RX_BUFFER_COUNT};
-	dma_channel::ch_config tx_config = {.buffer_size = TX_BUF_SIZE, .buffer_count = TX_BUFFER_COUNT};
-	piCout << "Wait for DMA init";
-	dma_channels[0]->init(rx_config);
-	dma_channels[0]->set_save_to_file(output_file, n_samps_per_buf);
-	dma_channels[0]->set_num_transfers(num_transfers);
-	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
-		rx_buffers[i] = dma_channels[0]->get_buffer(i);
-	}
-	piCout << "Rx buffers adresses are:";
-	for (size_t i = 0; i < RX_BUFFER_COUNT; i++) {
-		piCout << "num " << i << " " << PICoutManipulators::PICoutFormat::Hex << rx_buffers[i];
-	}
-
-	piCout << "Tx buffer adresses are:";
-	for (size_t i = 0; i < NUM_CHANNELS_TX; i++) {
-		tx_config.devnode = PIString2StdString(tx_devnodes[i]);
-		dma_channels[i + 1]->init(tx_config);
-		dma_channels[i + 1]->set_num_transfers(num_transfers);
-		dma_channels[i + 1]->get_all_buffers(tx_buffers[i]);
-		for (size_t k = 0; k < TX_BUFFER_COUNT; k++) {
-			piCout << "ch" << i << " buf" << k << " " << PICoutManipulators::PICoutFormat::Hex << tx_buffers[i][k];
-		}
+	if (dma.init(dma_cfg) != 0) {
+		fprintf(stderr, "Failed to initialize FPGA DMA\n");
+		return 1;
 	}
 
 	int buff_id          = 0;
@@ -372,84 +438,91 @@ int main(int argc, char * argv[]) {
 	piCout << "Start Transfer";
 	size_t file_pos         = 0;
 	const size_t tx_samples = TX_BUF_SIZE / sizeof(struct iq_sample);
-	while (completed < num_transfers) {
-		if (submitted < num_transfers && submitted - completed < RX_PIPELINE_DEPTH) {
-			// 600_us .sleep();
-			const int rx_buf_id = submitted % RX_PIPELINE_DEPTH;
-			dma_channels[0]->start_transfer_for_buf(rx_buf_id);
+	size_t file_pos         = 0;
+	const size_t tx_samples = TX_BUF_SIZE / sizeof(struct iq_sample);
 
+	while (dma.get_completed() < num_transfers) {
+		if (dma.get_submitted() < num_transfers && dma.can_send()) {
 			for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-				misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(tx_buffers[ch][0]),
+				misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(dma.get_tx_buffer(ch)),
 				                    file_buffers[ch],
 				                    file_samples,
 				                    file_pos,
 				                    tx_samples);
 			}
+
 			file_pos = (file_pos + tx_samples) % file_samples;
 
-			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
-				dma_channels[ch]->start_transfer_for_buf(0);
-			}
-			for (size_t ch = 1; ch < dma_channels.size(); ++ch) {
-				int ret = dma_channels[ch]->wait_for_transfer(0);
-				if (ret != 0) {
-					fprintf(stderr, "TX ERROR ch=%zu transaction=%zu ret=%d\n", ch - 1, submitted, ret);
-				}
-			}
-			// piCout << "TX DONE transaction=" << submitted << " rx_buf=" << rx_buf_id;
+			int ret  = dma.send();
 
-			++submitted;
+			if (ret != 0) {
+				fprintf(stderr, "TX ERROR transaction=%zu ret=%d\n", dma.get_submitted() - 1, ret);
+			}
 
 			continue;
 		}
 
-		const int rx_buf_id = completed % RX_PIPELINE_DEPTH;
-		t_end               = PISystemTime::current();
-		int ret             = dma_channels[0]->wait_for_transfer(rx_buf_id);
-		if (ret != 0) {
-			fprintf(stderr,
-			        "RX ERROR transaction=%zu buf=%d "
-			        "sent=%zu received=%zu\n",
-			        completed,
-			        rx_buf_id,
-			        submitted,
-			        completed);
+		int ret = dma.receive();
 
-			// Diagnostic: проверить остальные уже запущенные RX
-			for (size_t transaction = completed + 1; transaction < submitted; ++transaction) {
-				const int next_buf = transaction % RX_PIPELINE_DEPTH;
-				int next_ret       = dma_channels[0]->wait_for_transfer(next_buf);
-				fprintf(stderr,
-				        "RX AFTER ERROR transaction=%zu "
-				        "buf=%d ret=%d\n",
-				        transaction,
-				        next_buf,
-				        next_ret);
-			}
+		if (ret != 0) {
+			fprintf(stderr, "RX ERROR transaction=%zu ret=%d\n", dma.get_completed(), ret);
 			break;
 		}
-		// piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed +
-		// 1;
-		++completed;
+
+		void * rx_buffer = dma.get_rx_buffer();
+
+		// обработка / сохранение rx_buffer
 	}
 
-	piCout << "====";
-	piCout << "Mean: transfer time = " << (t_end - t_start) / completed;
-	piCout << "====";
+	// 		if (flag_save_buf) {
+	// 	auto * buffer       = ch.buf_ptr->buffers[buffer_id].buffer;
 
-	for (int k = dma_channels.size() - 1; k >= 0; k--) {
-		dma_channels[k]->cleanup();
-		delete dma_channels[k];
-		dma_channels[k] = nullptr;
+	// 	const auto * hdr    = reinterpret_cast<const struct header *>(buffer);
+
+	// 	int n_samps_to_save = n_samps_per_buf;
+
+	// 	if (hdr->tp == TP_WORK) {
+	// 		const auto * work = reinterpret_cast<const struct work_posthdr *>(reinterpret_cast<const uint32_t *>(buffer) + HDR_SIZE);
+
+	// 		n_samps_to_save   = HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
+	// 	}
+
+	// 	dataQueue.emplace(buffer, buffer + n_samps_to_save);
+	// }
+
+
+	// piCout << "RX DONE transaction=" << completed << " rx_buf=" << rx_buf_id << " sent=" << submitted << " received=" << completed +
+	// 1;
+	++completed;
+}
+
+piCout << "====";
+piCout << "Mean: transfer time = " << (t_end - t_start) / completed;
+piCout << "====";
+
+for (int k = dma_channels.size() - 1; k >= 0; k--) {
+	dma_channels[k]->cleanup();
+	delete dma_channels[k];
+	dma_channels[k] = nullptr;
+}
+
+if (flag_save_buf) {
+	while (!dataQueue.empty()) {
+		auto & samples = dataQueue.front();
+
+		save_buf_to_file(samples.data(), static_cast<int>(samples.size()));
+
+		dataQueue.pop();
 	}
+}
 
-	for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
-		delete[] file_buffers[ch];
-		file_buffers[ch] = nullptr;
-	}
+for (size_t ch = 0; ch < NUM_CHANNELS_TX; ++ch) {
+	delete[] file_buffers[ch];
+	file_buffers[ch] = nullptr;
+}
 
-	axi_dsp_deinit();
-	piDeleteSafety(kbd);
+axi_dsp_deinit();
+piDeleteSafety(kbd);
 
-	return 0;
+return 0;
 }

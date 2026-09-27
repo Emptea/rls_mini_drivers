@@ -1,14 +1,13 @@
 #include "axi_dsp.h"
-#include "dma_channel.hpp"
 #include "fpga_dma.hpp"
 #include "misc.h"
 #include "picout.h"
-#include "rls_cfg.hpp"
+#include "rls.hpp"
 
 #include <cstdint>
-#include <fcntl.h>
+#include <cstdlib>
 #include <filesystem>
-#include <iostream>
+#include <new>
 #include <picli.h>
 #include <pikbdlistener.h>
 #include <piliterals_time.h>
@@ -16,74 +15,10 @@
 #include <pisignals.h>
 #include <pistring_std.h>
 #include <queue>
-#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <unistd.h>
 #include <vector>
 
 namespace fs = std::filesystem;
-
-// static_assert(PIPELINE_DEPTH <= TX_BUFFER_COUNT);
-// static_assert(PIPELINE_DEPTH <= RX_BUFFER_COUNT);
-
-
-static void print_work(void * data) {
-	struct work_posthdr * work = (struct work_posthdr *)data;
-
-	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << work->packet_number;
-	piCout << "Number of detections" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << work->n_work_packets;
-
-	const struct work_packet * packets = reinterpret_cast<const struct work_packet *>(work + 1);
-	for (uint32_t i = 0; i < work->n_work_packets; ++i) {
-		const struct work_packet & packet = packets[i];
-		piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
-		piCout << "Work packet" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << i + 1;
-		piCout << "Range" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << PICoutManipulators::PICoutSpecialChar::Tab << static_cast<unsigned int>(packet.range);
-		piCout << "Main amplitude at sample" << packet.main_diagram_number << PICoutManipulators::PICoutSpecialChar::Tab
-			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.main_amplitude;
-		piCout << "Neighbour amplitude at sample" << packet.main_diagram_number - 1 + 2 * packet.neighbor_diagram_side
-			   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << packet.neighbor_amplitude;
-		piCout << "Frequency channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.frequency_channel;
-		piCout << "Ranker output" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-			   << PICoutManipulators::PICoutSpecialChar::Tab << packet.rank_out;
-	}
-	piCout << PICoutManipulators::PICoutSpecialChar::NewLine;
-}
-
-static void print_hdr(void * data) {
-	struct header * hdr = (struct header *)data;
-
-	PICout(PICoutManipulators::AddNone) << "Delimiter" << PICoutManipulators::PICoutSpecialChar::Tab
-										<< PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-										<< PICoutManipulators::PICoutSpecialChar::Tab << " 0x" << PICoutManipulators::PICoutFormat::Hex
-										<< hdr->del_high << "_" << hdr->del_low << PICoutManipulators::PICoutSpecialChar::NewLine;
-	piCout << "Packet Number" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->packet_number;
-	piCout << "Timestamp" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->timestamp;
-	piCout << "Channel" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << hdr->channel;
-	piCout << "Range gate" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->range;
-	piCout << "Test point" << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab
-		   << PICoutManipulators::PICoutSpecialChar::Tab << PICoutManipulators::PICoutSpecialChar::Tab << hdr->tp
-		   << PICoutManipulators::PICoutSpecialChar::NewLine;
-
-	if (hdr->tp == TP_WORK) {
-		print_work((uint32_t *)data + rls_cfg::HDR_SIZE);
-	}
-}
 
 static void save_buf_to_file(FILE * file, const void * buffer, int n) {
 	if (file == nullptr) {
@@ -170,16 +105,17 @@ static int load_8chs_from_file(const char * filename, struct iq_sample * buffers
 }
 
 int main(int argc, char * argv[]) {
-	bool flag_save_buf = true;
 	if (argc < 6) {
-		printf("usage: %s <test_point> <channel> <range_gate> <num_transfers> <input_file> <output_file>\n", argv[0]);
+		printf("usage: %s <test_point> <channel> <range_gate> "
+		       "<num_transfers> <input_file> [output_file]\n",
+		       argv[0]);
 		return 1;
-	} else if (argc < 7) {
-		flag_save_buf = false;
 	}
 
-	PIString dir_path_str = StdString2PIString(misc_get_date());
-	fs::path dir_path     = PIString2StdString(dir_path_str);
+	const bool flag_save_buf = argc >= 7;
+
+	PIString dir_path_str    = StdString2PIString(misc_get_date());
+	fs::path dir_path        = PIString2StdString(dir_path_str);
 
 	if (fs::create_directories(dir_path)) {
 		piCout << "Created directory" << dir_path_str;
@@ -193,24 +129,22 @@ int main(int argc, char * argv[]) {
 	});
 	PISignals::grabSignals(PISignals::Interrupt | PISignals::Termination);
 
-
-	PIKbdListener * kbd = nullptr;
-
-
-	kbd                 = new PIKbdListener(nullptr, nullptr, false);
+	PIKbdListener * kbd = new PIKbdListener(nullptr, nullptr, false);
 	kbd->enableExitCapture(PIKbdListener::F10);
 
 
-	uint32_t test_point     = (uint32_t)strtol(argv[1], NULL, 0);
-	uint32_t channel        = (uint32_t)strtol(argv[2], NULL, 0);
-	uint32_t range_gate     = (uint32_t)strtol(argv[3], NULL, 0);
-	uint32_t num_transfers  = (uint32_t)strtol(argv[4], NULL, 0);
-	const char * input_file = argv[5];
-	PIString output_file    = dir_path_str + "/" + argv[6];
-	FILE * dump_file        = nullptr;
+	const uint32_t test_point    = static_cast<uint32_t>(std::strtol(argv[1], nullptr, 0));
+	const uint32_t channel       = static_cast<uint32_t>(std::strtol(argv[2], nullptr, 0));
+	const uint32_t range_gate    = static_cast<uint32_t>(std::strtol(argv[3], nullptr, 0));
+	const uint32_t num_transfers = static_cast<uint32_t>(std::strtol(argv[4], nullptr, 0));
+
+	const char * input_file      = argv[5];
+	FILE * dump_file             = nullptr;
 
 	if (flag_save_buf) {
-		dump_file = fopen(PIString2StdString(output_file).c_str(), "w");
+		PIString output_file = dir_path_str + "/" + argv[6];
+
+		dump_file            = fopen(PIString2StdString(output_file).c_str(), "w");
 
 		if (dump_file == nullptr) {
 			perror("Failed to open output file");
@@ -227,7 +161,10 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
-	axi_dsp_init();
+	if (axi_dsp_init() != FD_ERR_NONE) {
+		piCout << "Failed to initialize AXI DSP";
+		return 1;
+	}
 	axi_dsp_configure();
 
 	axi_dsp_set_output_source(test_point, channel, range_gate);
@@ -245,7 +182,7 @@ int main(int argc, char * argv[]) {
 	PISystemTime t_start = PISystemTime::current();
 	piCout << "Start Transfer";
 	size_t file_pos         = 0;
-	const size_t tx_samples = rls_cfg::TX_BUF_SIZE / sizeof(struct iq_sample);
+	const size_t tx_samples = rls::TX_BUF_SIZE / sizeof(struct iq_sample);
 	std::queue<std::vector<uint32_t>> dataQueue;
 
 	while (dma.get_completed() < num_transfers) {
@@ -277,13 +214,12 @@ int main(int argc, char * argv[]) {
 		// обработка / сохранение rx_buffer
 		if (flag_save_buf) {
 			auto * buffer       = reinterpret_cast<uint32_t *>(rx_buffer);
-			const auto * hdr    = reinterpret_cast<const struct header *>(buffer);
-			int n_samps_to_save = axi_dsp_get_rx_words_per_buf(test_point);
-			if (hdr->tp == TP_WORK) {
-				const auto * work =
-					reinterpret_cast<const struct work_posthdr *>(reinterpret_cast<const uint32_t *>(buffer) + rls_cfg::HDR_SIZE);
+			const auto * hdr    = reinterpret_cast<const rls::header *>(buffer);
+			int n_samps_to_save = rls::get_rx_words_per_buf(test_point);
+			if (hdr->tp == rls::TP_WORK) {
+				const auto * work = reinterpret_cast<const rls::work_posthdr *>(buffer + rls::HDR_SIZE);
 				n_samps_to_save =
-					rls_cfg::HDR_SIZE + (sizeof(work_posthdr) + work->n_work_packets * sizeof(work_packet)) / sizeof(uint32_t);
+					rls::HDR_SIZE + (sizeof(rls::work_posthdr) + work->n_work_packets * sizeof(rls::work_packet)) / sizeof(uint32_t);
 			}
 			dataQueue.emplace(buffer, buffer + n_samps_to_save);
 		}

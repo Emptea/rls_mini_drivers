@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(ip_comm_test)
+
 find_package(PIP REQUIRED)
 
 set(CMAKE_SYSTEM_NAME Linux)
@@ -15,35 +16,53 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 set_version(${PROJECT_NAME}
-	MAJOR 0
-	MINOR 0
-	REVISION 1
-	BUILD ${BUILD_NUMBER}
-	OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_version.h")
-set_deploy_property(${PROJECT_NAME}
-	LABEL "${PROJECT_NAME}"
-	FULLNAME "rls_mini"
-	COMPANY "SM5"
-	INFO "")
-make_rc(${PROJECT_NAME} out_RC)
+    MAJOR 0
+    MINOR 0
+    REVISION 1
+    BUILD ${BUILD_NUMBER}
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}_version.h"
+)
 
-file(GLOB CPPS "*.cpp")
-file(GLOB HDRS "*.h")
-# pip_code_model(CCM_PROTOCOL "protocol_rls_mini.h" OPTIONS "-SEMs" NAME "ccm_protocol")
+set_deploy_property(${PROJECT_NAME}
+    LABEL "${PROJECT_NAME}"
+    FULLNAME "rls_mini"
+    COMPANY "SM5"
+    INFO ""
+)
+
+make_rc(${PROJECT_NAME} out_RC)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(${PROJECT_NAME} ${CPPS} ${CS} ${HDRS} ${out_RC})
-target_link_libraries(${PROJECT_NAME} PIP::Console PIP::IOUtils)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-install(TARGETS ${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-deploy_target(${PROJECT_NAME}
-	DEPLOY_DIR ${CMAKE_INSTALL_PREFIX}/bin
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/release)
-
-# need these include and link directories for the build
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}
+add_subdirectory(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../modules/rls_fpga
+    ${CMAKE_CURRENT_BINARY_DIR}/rls_fpga
 )
 
+add_executable(${PROJECT_NAME}
+    ip_comm_test.cpp
+    ${out_RC}
+)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        PIP::Console
+        PIP::IOUtils
+        rls_fpga
+)
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${CMAKE_CURRENT_BINARY_DIR}
+)
+
+install(
+    TARGETS ${PROJECT_NAME}
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+)
+
+deploy_target(${PROJECT_NAME}
+    DEPLOY_DIR ${CMAKE_INSTALL_PREFIX}/bin
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/release
+)

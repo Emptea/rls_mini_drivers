@@ -1827,23 +1827,13 @@ static int xilinx_dma_reset(struct xilinx_dma_chan *chan)
 	int err;
 	u32 tmp;
 
-dev_info(chan->dev, "DBG: reset read begin\n");
-tmp = dma_ctrl_read(chan, XILINX_DMA_REG_DMACR);
-dev_info(chan->dev, "DBG: reset read end cr=0x%08x\n", tmp);
-
-dev_info(chan->dev, "DBG: reset write begin\n");
-dma_ctrl_write(chan, XILINX_DMA_REG_DMACR,
-       tmp | XILINX_DMA_DMACR_RESET);
-dev_info(chan->dev, "DBG: reset write end\n");
+	dma_ctrl_set(chan, XILINX_DMA_REG_DMACR, XILINX_DMA_DMACR_RESET);
 
 	/* Wait for the hardware to finish reset */
 	err = xilinx_dma_poll_timeout(chan, XILINX_DMA_REG_DMACR, tmp,
 				      !(tmp & XILINX_DMA_DMACR_RESET),
 				      XILINX_DMA_POLL_DELAY_US,
 				      XILINX_DMA_POLL_TIMEOUT_US);
-
-dev_info(chan->dev, "DBG: reset poll end err=%d cr=0x%08x\n",
- err, tmp);
 
 	if (err) {
 		dev_err(chan->dev, "reset timeout, cr %x, sr %x\n",
@@ -3027,12 +3017,8 @@ static int xilinx_dma_chan_probe(struct xilinx_dma_device *xdev,
 
 	/* Request the interrupt */
 	chan->irq = irq_of_parse_and_map(node, chan->tdest);
-	dev_info(chan->dev, "DBG: ch=%d irq=%d request begin\n",
-		 chan->id, chan->irq);
 	err = request_irq(chan->irq, xdev->dma_config->irq_handler,
 			  IRQF_SHARED, "xilinx-dma-controller", chan);
-	dev_info(chan->dev, "DBG: ch=%d request end err=%d\n",
-		 chan->id, err);
 	if (err) {
 		dev_err(xdev->dev, "unable to request IRQ %d\n", chan->irq);
 		return err;
@@ -3076,11 +3062,7 @@ static int xilinx_dma_chan_probe(struct xilinx_dma_device *xdev,
 	xdev->chan[chan->id] = chan;
 
 	/* Reset the channel */
-	dev_info(chan->dev, "DBG: ch=%d reset begin offset=0x%x\n",
-		 chan->id, chan->ctrl_offset);
 	err = xilinx_dma_chan_reset(chan);
-	dev_info(chan->dev, "DBG: ch=%d reset end err=%d\n",
-		 chan->id, err);
 	if (err < 0) {
 		dev_err(xdev->dev, "Reset channel failed\n");
 		return err;
@@ -3206,10 +3188,8 @@ static int xilinx_dma_probe(struct platform_device *pdev)
 		}
 	}
 
-	dev_info(&pdev->dev, "DBG: clocks begin\n");
 	err = clk_init(pdev, &xdev->axi_clk, &xdev->tx_clk, &xdev->txs_clk,
 		       &xdev->rx_clk, &xdev->rxs_clk);
-	dev_info(&pdev->dev, "DBG: clocks end err=%d\n", err);
 	if (err)
 		return err;
 

@@ -14,7 +14,7 @@
 #define DRV_NAME "rls_mini_pl"
 #define DEV_NAME "rls_mini_pl"
 
-#define REG_MAX_OFFSET CSR_COMPENSATION_REFERENCE_ADDR
+#define REG_MAX_OFFSET CSR_SETTINGS_ADDR
 #define REG_MIN_OFFSET CSR_IP_VER_ADDR
 #define REG_SIZE       sizeof(u32)
 

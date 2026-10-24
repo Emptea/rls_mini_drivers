@@ -166,6 +166,7 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 	axi_dsp_configure();
+	axi_dsp_set_expect_u220_del(0);
 
 	axi_dsp_set_output_source(test_point, channel, range_gate);
 	auto v = axi_dsp_get_output_source();

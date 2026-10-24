@@ -189,7 +189,7 @@ int main(int argc, char * argv[]) {
 	while (dma.get_completed() < num_transfers) {
 		if (dma.get_submitted() < num_transfers && dma.can_send()) {
 			for (size_t ch = 0; ch < fpga_dma::NUM_TX_CHANNELS; ++ch) {
-				misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(dma.get_tx_buffer(ch)),
+				misc_copy_cyclic_iq(reinterpret_cast<struct iq_sample *>(dma.get_current_tx_buffer(ch)),
 				                    file_buffers[ch],
 				                    file_samples,
 				                    file_pos,

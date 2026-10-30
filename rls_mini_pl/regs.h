@@ -6,11 +6,13 @@
 #define __O  volatile       // 'write only' permissions
 #define __IO volatile       // 'read / write' permissions
 
+
+
 #define CSR_BASE_ADDR 0x0
 
 // ip_ver - 
 #define CSR_IP_VER_ADDR 0x10
-#define CSR_IP_VER_RESET 0x40001
+#define CSR_IP_VER_RESET 0x40003
 typedef struct {
     uint32_t MIN_VER : 16; // Minor IP version
     uint32_t MAJ_VER : 16; // Major IP version
@@ -20,7 +22,7 @@ typedef struct {
 #define CSR_IP_VER_MIN_VER_WIDTH 16
 #define CSR_IP_VER_MIN_VER_LSB 0
 #define CSR_IP_VER_MIN_VER_MASK 0xffff
-#define CSR_IP_VER_MIN_VER_RESET 0x1
+#define CSR_IP_VER_MIN_VER_RESET 0x3
 
 // ip_ver.maj_ver - Major IP version
 #define CSR_IP_VER_MAJ_VER_WIDTH 16
@@ -1725,31 +1727,31 @@ typedef struct {
 #define CSR_APU_RANK_WINDOW_MASK 0xff00
 #define CSR_APU_RANK_WINDOW_RESET 0x0
 
-// detector_level_0 - 
-#define CSR_DETECTOR_LEVEL_0_ADDR 0x188
-#define CSR_DETECTOR_LEVEL_0_RESET 0x0
+// cfar_level - 
+#define CSR_CFAR_LEVEL_ADDR 0x188
+#define CSR_CFAR_LEVEL_RESET 0x0
 typedef struct {
-    uint32_t LEVEL : 32; // detector comparation level
-} csr_detector_level_0_t;
+    uint32_t CFAR_LEVEL : 32; // cfar comparation level (P in alg docs)
+} csr_cfar_level_t;
 
-// detector_level_0.level - detector comparation level
-#define CSR_DETECTOR_LEVEL_0_LEVEL_WIDTH 32
-#define CSR_DETECTOR_LEVEL_0_LEVEL_LSB 0
-#define CSR_DETECTOR_LEVEL_0_LEVEL_MASK 0xffffffff
-#define CSR_DETECTOR_LEVEL_0_LEVEL_RESET 0x0
+// cfar_level.cfar_level - cfar comparation level (P in alg docs)
+#define CSR_CFAR_LEVEL_CFAR_LEVEL_WIDTH 32
+#define CSR_CFAR_LEVEL_CFAR_LEVEL_LSB 0
+#define CSR_CFAR_LEVEL_CFAR_LEVEL_MASK 0xffffffff
+#define CSR_CFAR_LEVEL_CFAR_LEVEL_RESET 0x0
 
-// detector_level_1 - 
-#define CSR_DETECTOR_LEVEL_1_ADDR 0x18c
-#define CSR_DETECTOR_LEVEL_1_RESET 0x0
+// median_detector_coef - 
+#define CSR_MEDIAN_DETECTOR_COEF_ADDR 0x18c
+#define CSR_MEDIAN_DETECTOR_COEF_RESET 0x0
 typedef struct {
-    uint32_t LEVEL : 32; // detector comparation level
-} csr_detector_level_1_t;
+    uint32_t MEDIAN_DETECTOR_COEF : 32; // k1^2 in alg docs - rank sorter output is multiplied to get a comparation level to product Hi. 2**24 = 1.0
+} csr_median_detector_coef_t;
 
-// detector_level_1.level - detector comparation level
-#define CSR_DETECTOR_LEVEL_1_LEVEL_WIDTH 32
-#define CSR_DETECTOR_LEVEL_1_LEVEL_LSB 0
-#define CSR_DETECTOR_LEVEL_1_LEVEL_MASK 0xffffffff
-#define CSR_DETECTOR_LEVEL_1_LEVEL_RESET 0x0
+// median_detector_coef.median_detector_coef - k1^2 in alg docs - rank sorter output is multiplied to get a comparation level to product Hi. 2**24 = 1.0
+#define CSR_MEDIAN_DETECTOR_COEF_MEDIAN_DETECTOR_COEF_WIDTH 32
+#define CSR_MEDIAN_DETECTOR_COEF_MEDIAN_DETECTOR_COEF_LSB 0
+#define CSR_MEDIAN_DETECTOR_COEF_MEDIAN_DETECTOR_COEF_MASK 0xffffffff
+#define CSR_MEDIAN_DETECTOR_COEF_MEDIAN_DETECTOR_COEF_RESET 0x0
 
 // azimuth_angle - 
 #define CSR_AZIMUTH_ANGLE_ADDR 0x190
@@ -1819,6 +1821,214 @@ typedef struct {
 #define CSR_SETTINGS_EXPECT_DELIMITER_LSB 0
 #define CSR_SETTINGS_EXPECT_DELIMITER_MASK 0x1
 #define CSR_SETTINGS_EXPECT_DELIMITER_RESET 0x0
+
+// frequency_selection_0 - 
+#define CSR_FREQUENCY_SELECTION_0_ADDR 0x1a4
+#define CSR_FREQUENCY_SELECTION_0_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_0_t;
+
+// frequency_selection_0.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_0_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_0_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_0_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_0_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_1 - 
+#define CSR_FREQUENCY_SELECTION_1_ADDR 0x1a8
+#define CSR_FREQUENCY_SELECTION_1_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_1_t;
+
+// frequency_selection_1.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_1_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_1_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_1_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_1_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_2 - 
+#define CSR_FREQUENCY_SELECTION_2_ADDR 0x1ac
+#define CSR_FREQUENCY_SELECTION_2_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_2_t;
+
+// frequency_selection_2.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_2_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_2_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_2_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_2_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_3 - 
+#define CSR_FREQUENCY_SELECTION_3_ADDR 0x1b0
+#define CSR_FREQUENCY_SELECTION_3_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_3_t;
+
+// frequency_selection_3.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_3_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_3_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_3_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_3_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_4 - 
+#define CSR_FREQUENCY_SELECTION_4_ADDR 0x1b4
+#define CSR_FREQUENCY_SELECTION_4_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_4_t;
+
+// frequency_selection_4.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_4_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_4_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_4_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_4_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_5 - 
+#define CSR_FREQUENCY_SELECTION_5_ADDR 0x1b8
+#define CSR_FREQUENCY_SELECTION_5_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_5_t;
+
+// frequency_selection_5.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_5_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_5_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_5_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_5_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_6 - 
+#define CSR_FREQUENCY_SELECTION_6_ADDR 0x1bc
+#define CSR_FREQUENCY_SELECTION_6_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_6_t;
+
+// frequency_selection_6.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_6_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_6_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_6_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_6_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_7 - 
+#define CSR_FREQUENCY_SELECTION_7_ADDR 0x1c0
+#define CSR_FREQUENCY_SELECTION_7_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_7_t;
+
+// frequency_selection_7.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_7_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_7_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_7_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_7_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_8 - 
+#define CSR_FREQUENCY_SELECTION_8_ADDR 0x1c4
+#define CSR_FREQUENCY_SELECTION_8_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_8_t;
+
+// frequency_selection_8.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_8_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_8_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_8_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_8_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_9 - 
+#define CSR_FREQUENCY_SELECTION_9_ADDR 0x1c8
+#define CSR_FREQUENCY_SELECTION_9_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_9_t;
+
+// frequency_selection_9.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_9_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_9_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_9_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_9_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_10 - 
+#define CSR_FREQUENCY_SELECTION_10_ADDR 0x1cc
+#define CSR_FREQUENCY_SELECTION_10_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_10_t;
+
+// frequency_selection_10.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_10_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_10_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_10_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_10_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_11 - 
+#define CSR_FREQUENCY_SELECTION_11_ADDR 0x1d0
+#define CSR_FREQUENCY_SELECTION_11_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_11_t;
+
+// frequency_selection_11.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_11_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_11_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_11_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_11_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_12 - 
+#define CSR_FREQUENCY_SELECTION_12_ADDR 0x1d4
+#define CSR_FREQUENCY_SELECTION_12_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_12_t;
+
+// frequency_selection_12.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_12_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_12_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_12_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_12_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_13 - 
+#define CSR_FREQUENCY_SELECTION_13_ADDR 0x1d8
+#define CSR_FREQUENCY_SELECTION_13_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_13_t;
+
+// frequency_selection_13.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_13_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_13_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_13_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_13_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_14 - 
+#define CSR_FREQUENCY_SELECTION_14_ADDR 0x1dc
+#define CSR_FREQUENCY_SELECTION_14_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_14_t;
+
+// frequency_selection_14.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_14_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_14_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_14_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_14_FREQUENCY_SELECTION_RESET 0x0
+
+// frequency_selection_15 - 
+#define CSR_FREQUENCY_SELECTION_15_ADDR 0x1e0
+#define CSR_FREQUENCY_SELECTION_15_RESET 0x0
+typedef struct {
+    uint32_t FREQUENCY_SELECTION : 32; // frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+} csr_frequency_selection_15_t;
+
+// frequency_selection_15.frequency_selection - frequency channel selection for after-fft processing (ki in alg docs), total of 512 starting with 0 reg - 0 bit ending with 15 reg - 31 bit
+#define CSR_FREQUENCY_SELECTION_15_FREQUENCY_SELECTION_WIDTH 32
+#define CSR_FREQUENCY_SELECTION_15_FREQUENCY_SELECTION_LSB 0
+#define CSR_FREQUENCY_SELECTION_15_FREQUENCY_SELECTION_MASK 0xffffffff
+#define CSR_FREQUENCY_SELECTION_15_FREQUENCY_SELECTION_RESET 0x0
 
 
 // Register map structure
@@ -2201,12 +2411,12 @@ typedef struct {
         __IO csr_apu_rank_t APU_RANK_bf; // Bit access for APU_RANK register
     };
     union {
-        __IO uint32_t DETECTOR_LEVEL_0; // 
-        __IO csr_detector_level_0_t DETECTOR_LEVEL_0_bf; // Bit access for DETECTOR_LEVEL_0 register
+        __IO uint32_t CFAR_LEVEL; // 
+        __IO csr_cfar_level_t CFAR_LEVEL_bf; // Bit access for CFAR_LEVEL register
     };
     union {
-        __IO uint32_t DETECTOR_LEVEL_1; // 
-        __IO csr_detector_level_1_t DETECTOR_LEVEL_1_bf; // Bit access for DETECTOR_LEVEL_1 register
+        __IO uint32_t MEDIAN_DETECTOR_COEF; // 
+        __IO csr_median_detector_coef_t MEDIAN_DETECTOR_COEF_bf; // Bit access for MEDIAN_DETECTOR_COEF register
     };
     union {
         __IO uint32_t AZIMUTH_ANGLE; // 
@@ -2228,8 +2438,76 @@ typedef struct {
         __IO uint32_t SETTINGS; // 
         __IO csr_settings_t SETTINGS_bf; // Bit access for SETTINGS register
     };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_0; // 
+        __IO csr_frequency_selection_0_t FREQUENCY_SELECTION_0_bf; // Bit access for FREQUENCY_SELECTION_0 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_1; // 
+        __IO csr_frequency_selection_1_t FREQUENCY_SELECTION_1_bf; // Bit access for FREQUENCY_SELECTION_1 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_2; // 
+        __IO csr_frequency_selection_2_t FREQUENCY_SELECTION_2_bf; // Bit access for FREQUENCY_SELECTION_2 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_3; // 
+        __IO csr_frequency_selection_3_t FREQUENCY_SELECTION_3_bf; // Bit access for FREQUENCY_SELECTION_3 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_4; // 
+        __IO csr_frequency_selection_4_t FREQUENCY_SELECTION_4_bf; // Bit access for FREQUENCY_SELECTION_4 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_5; // 
+        __IO csr_frequency_selection_5_t FREQUENCY_SELECTION_5_bf; // Bit access for FREQUENCY_SELECTION_5 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_6; // 
+        __IO csr_frequency_selection_6_t FREQUENCY_SELECTION_6_bf; // Bit access for FREQUENCY_SELECTION_6 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_7; // 
+        __IO csr_frequency_selection_7_t FREQUENCY_SELECTION_7_bf; // Bit access for FREQUENCY_SELECTION_7 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_8; // 
+        __IO csr_frequency_selection_8_t FREQUENCY_SELECTION_8_bf; // Bit access for FREQUENCY_SELECTION_8 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_9; // 
+        __IO csr_frequency_selection_9_t FREQUENCY_SELECTION_9_bf; // Bit access for FREQUENCY_SELECTION_9 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_10; // 
+        __IO csr_frequency_selection_10_t FREQUENCY_SELECTION_10_bf; // Bit access for FREQUENCY_SELECTION_10 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_11; // 
+        __IO csr_frequency_selection_11_t FREQUENCY_SELECTION_11_bf; // Bit access for FREQUENCY_SELECTION_11 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_12; // 
+        __IO csr_frequency_selection_12_t FREQUENCY_SELECTION_12_bf; // Bit access for FREQUENCY_SELECTION_12 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_13; // 
+        __IO csr_frequency_selection_13_t FREQUENCY_SELECTION_13_bf; // Bit access for FREQUENCY_SELECTION_13 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_14; // 
+        __IO csr_frequency_selection_14_t FREQUENCY_SELECTION_14_bf; // Bit access for FREQUENCY_SELECTION_14 register
+    };
+    union {
+        __IO uint32_t FREQUENCY_SELECTION_15; // 
+        __IO csr_frequency_selection_15_t FREQUENCY_SELECTION_15_bf; // Bit access for FREQUENCY_SELECTION_15 register
+    };
 } csr_t;
 
 #define CSR ((csr_t*)(CSR_BASE_ADDR))
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __REGS_H */

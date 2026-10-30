@@ -218,9 +218,10 @@ int main(int argc, char * argv[]) {
 			const auto * hdr    = reinterpret_cast<const rls::header *>(buffer);
 			int n_samps_to_save = rls::get_rx_words_per_buf(test_point);
 			if (hdr->tp == rls::TP_WORK) {
-				const auto * work = reinterpret_cast<const rls::work_posthdr *>(buffer + rls::HDR_SIZE);
-				n_samps_to_save =
-					rls::HDR_SIZE + (sizeof(rls::work_posthdr) + work->n_work_packets * sizeof(rls::work_packet)) / sizeof(uint32_t);
+				constexpr auto noise_words = sizeof(rls::noise_formular) / sizeof(uint32_t);
+				const auto * work = reinterpret_cast<const rls::work_posthdr *>(buffer + rls::HDR_SIZE + noise_words);
+				n_samps_to_save = rls::HDR_SIZE + noise_words +
+				                  (sizeof(rls::work_posthdr) + work->n_formulars * sizeof(rls::formular)) / sizeof(uint32_t);
 			}
 			dataQueue.emplace(buffer, buffer + n_samps_to_save);
 		}
